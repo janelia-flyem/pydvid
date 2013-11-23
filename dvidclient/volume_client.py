@@ -1,4 +1,5 @@
 from httplib import HTTPConnection
+import threading
 
 import numpy
 import vigra
@@ -38,7 +39,9 @@ class VolumeClient(object):
             raise Exception( "Error in response to metainfo query: {}, {}".format( response.status, response.reason ) )
 
         self.metainfo = parse_meta_info_from_json( response.read() )
-            
+        
+        self._lock = threading.Lock() # TODO: Instead of locking, auto-instantiate separate connections for each thread...
+        
     def retrieve_subvolume(self, start, stop):
         """
         Retrieve a subvolume from the remote server.
@@ -68,11 +71,13 @@ class VolumeClient(object):
                                 dims_string=dims_string, 
                                 roi_shape_str=roi_shape_str, 
                                 start_str=start_str )
-        self._connection.request( "GET", rest_query )
-        response = self._connection.getresponse()
-        if response.status != 200:
-            raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
-        return self.decode_to_vigra_array( response, self.metainfo, roi_shape )
+        # TODO: Instead of locking, auto-instantiate separate connections for each thread...
+        with self._lock:
+            self._connection.request( "GET", rest_query )
+            response = self._connection.getresponse()
+            if response.status != 200:
+                raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
+            return self.decode_to_vigra_array( response, self.metainfo, roi_shape )
 
     def decode_to_vigra_array(self, stream, metainfo, roi_shape):
         """
