@@ -25,7 +25,7 @@ def parse_meta_info_from_json(jsontext):
     # We always in include "channel" as the FIRST axis
     # (DVID uses fortran-order notation.)
     shape.append( len(meta_dict["values"]) )
-    tags.insert( 0, vigra.AxisInfo('c') )
+    tags.insert( 0, vigra.AxisInfo('c', typeFlags=vigra.AxisType.Channels) )
 
     dtypes = []
     for channel_fields in meta_dict["values"]:
@@ -34,7 +34,9 @@ def parse_meta_info_from_json(jsontext):
     for axisfields in meta_dict['axes']:
         key = str(axisfields["label"]).lower()
         res = axisfields["resolution"]
-        tags.insert( len(tags), vigra.AxisInfo(key, resolution=res) )
+        tag = vigra.defaultAxistags(key)[0]
+        tag.resolution = res
+        tags.insert( len(tags), tag )
         # TODO: Check resolution units, because apparently 
         #        they can be different from one axis to the next...
         shape.append( axisfields["size"] )

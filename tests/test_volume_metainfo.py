@@ -78,6 +78,10 @@ class TestMetaInfo( object ):
         # Order is auto-converted from C-order to Fortran-order
         assert metainfo.shape == ( 3, 9, 10, 11 ), "Wrong shape: {}".format( metainfo.shape )
         assert [tag.key for tag in metainfo.axistags] == ['c', 'x', 'y', 'z']
+        assert metainfo.axistags['c'].typeFlags == vigra.AxisType.Channels
+        assert metainfo.axistags['x'].typeFlags == vigra.AxisType.Space
+        assert metainfo.axistags['y'].typeFlags == vigra.AxisType.Space
+        assert metainfo.axistags['z'].typeFlags == vigra.AxisType.Space
 
 if __name__ == "__main__":
     import sys
