@@ -1,3 +1,18 @@
+"""
+This file implements an http server.
+It serves up HDF5 datasets over http using the DVID REST API.
+
+The server can also be started up in stand-alone mode:
+
+    $ cd mockserver
+    $ PYTHONPATH=.. python h5mockserver.py my_hdf5_file.h5
+
+Internally, your hdf5 file must be a two-level heirarchy, such that each dataset is accessed via: `/uuid/dataset_name`.
+Furthermore, each dataset:
+- Must include a channel axis
+- Must have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
+- Must be in C-order, e.g. zyxc
+"""
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 import numpy
