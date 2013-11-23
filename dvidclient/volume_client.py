@@ -8,7 +8,7 @@ from volume_metainfo import parse_meta_info_from_json
 import logging
 logger = logging.getLogger(__name__)
 
-class DvidVolume(object):
+class VolumeClient(object):
     STREAM_CHUNK_SIZE = 1000
 
     def decode_to_vigra_array(self, stream, metainfo, roi_shape):
@@ -81,79 +81,6 @@ class DvidVolume(object):
         return self.decode_to_vigra_array( response, self.metainfo, roi_shape )
 
 if __name__ == "__main__":
-    import h5py
-    def test_volume(hostname, h5filename, h5group, h5dataset, start, stop):
-        """
-        hostname: The dvid server host
-        h5filename: The h5 file to compare against
-        h5group: The hdf5 group, also used as the uuid of the dvid dataset
-        h5dataset: The dataset name, also used as the name of the dvid dataset
-        start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
-        """
-        # Retrieve from server
-        dvid_vol = DvidVolume( hostname, uuid=h5group, dataset_name=h5dataset )
-        subvol = dvid_vol.retrieve_subvolume( start, stop )
-
-        # Retrieve from file
-        slicing = [ slice(x,y) for x,y in zip(start, stop) ]
-        slicing = tuple(reversed(slicing))
-        with h5py.File(h5filename, 'r') as f:
-            expected_data = f[h5group][h5dataset][slicing]
-
-        # Compare.
-        assert ( subvol.view(numpy.ndarray) == expected_data.transpose() ).all(),\
-            "Data from server didn't match data from file!"
-
-    filename = "/magnetic/gigacube.h5"
-    test_volume( "localhost:8000", filename, "volume", "data", (0,0,5,0,0), (1,100,20,10,1) )
-    print "TEST COMPLETE"
-
-    def test_metainfo_parsing():
-            meta_string = """
-        {
-            "axes": [
-                {
-                    "label": "X",
-                    "resolution": 3.1,
-                    "units": "nanometers",
-                    "size": 100
-                },{
-                    "label": "Y",
-                    "resolution": 3.1,
-                    "units": "nanometers",
-                    "size": 200
-                },{
-                    "label": "Z",
-                    "resolution": 40,
-                    "units": "nanometers",
-                    "size": 400
-                }
-            ],
-            "values": [
-                {
-                    "type": "uint8",
-                    "label": "intensity-R"
-                },
-                {
-                    "type": "uint8",
-                    "label": "intensity-G"
-                },
-                {
-                    "type": "uint8",
-                    "label": "intensity-B"
-                }
-            ]
-        }
-        """            
-        
-            shape, dtype, tags = parse_meta_info_from_json(meta_string)
-            assert shape == (3, 100,200,400), "Wrong shape: {}".format( shape )
-            assert dtype == numpy.uint8
-            assert [tag.key for tag in tags] == ['c', 'x', 'y', 'z']
-            assert tags['x'].resolution == 3.1
-            assert tags['y'].resolution == 3.1
-            assert tags['z'].resolution == 40
-
-        
+    pass
         
     

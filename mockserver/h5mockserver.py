@@ -8,7 +8,7 @@ from dvidclient.volume_metainfo import get_dataset_metainfo, format_metainfo_to_
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
-    Suports the following DVID REST calls:
+    Supports the following DVID REST calls:
     
     Meta info:
         GET  /api/node/<UUID>/<data name>/info

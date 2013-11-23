@@ -9,7 +9,7 @@ MetaInfo = collections.namedtuple('MetaInfo', 'shape dtype axistags')
 
 def parse_meta_info_from_json(jsontext):
     """
-    Parse the given text and return a MetaInfo namedtuple
+    Parse the given json text and return a MetaInfo namedtuple
     
     NOTE: By DVID convention, the axistags are returned assuming FORTRAN ORDER.
     """
@@ -45,6 +45,12 @@ def parse_meta_info_from_json(jsontext):
     return MetaInfo( tuple(shape), dtypes[0], tags )
 
 def format_metainfo_to_json(metainfo):
+    """
+    Encode the given MetaInfo object into json text for transmission over http.
+    """
+    assert metainfo.axistags.index('c') < len(metainfo.axistags),\
+        "All DVID volume metainfo must include a channel axis!"
+    
     metadict = {}
     metadict["axes"] = []
     for tag, size in zip(metainfo.axistags, metainfo.shape):
@@ -65,10 +71,16 @@ def format_metainfo_to_json(metainfo):
     return json.dumps( metadict )
 
 def get_dataset_metainfo(dataset):
-    shape = dataset.shape
+    """
+    Create a MetaInfo object to describe the given h5 dataset object.
+    dataset: An hdf5 dataset object that meets the following criteria:
+             - Indexed in C-order
+             - Has an 'axistags' attribute, produced using vigra.AxisTags.toJSON()
+    """
     dtype = dataset.dtype.type
     # Tricky business here:
     # The dataset is stored as a C-order-array, but DVID wants fortran order.
+    shape = tuple(reversed(dataset.shape))
     c_tags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
     f_tags = vigra.AxisTags( list(reversed(c_tags)) )
     return MetaInfo( shape, dtype, f_tags )
