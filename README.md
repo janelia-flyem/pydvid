@@ -2,6 +2,9 @@ DVID Client Implementation
 ==========================
 Simple client for retrieving volume cutout data from a DVID Server.
 
+Mock Server
+-----------
+
 For test purposes, a mock DVID server is implemented in the mockserver directory.
 It serves up HDF5 datasets over http using the DVID REST API.
 
@@ -17,3 +20,10 @@ Furthermore, each dataset:
 - Must be in C-order, e.g. zyxc
 
 See h5mockserver.py for info about its limitations.
+
+Run the tests
+-------------
+The unit tests require nosetests.
+
+    $ cd tests
+    $ PYTHONPATH=.. nosetests .

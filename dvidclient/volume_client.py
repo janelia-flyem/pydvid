@@ -70,7 +70,6 @@ class VolumeClient(object):
                                 start_str=start_str )
         self._connection.request( "GET", rest_query )
         response = self._connection.getresponse()
-        response.getheaders()
         if response.status != 200:
             raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
         return self.decode_to_vigra_array( response, self.metainfo, roi_shape )
@@ -78,6 +77,9 @@ class VolumeClient(object):
     def decode_to_vigra_array(self, stream, metainfo, roi_shape):
         """
         Decode the info in the given stream to a vigra.VigraArray.
+        
+        Note: metainfo.shape is IGNORED, because it refers to the entire DVID volume.
+              Instead, the roi_shape parameter determines the size of the decoded dataset.
         """
         # Vigra is finicky about the integer types we give it in the shape field
         roi_shape = tuple( map(int, roi_shape) )

@@ -29,6 +29,8 @@ from dvidclient.volume_metainfo import get_dataset_metainfo, format_metainfo_to_
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
+    The request handler for the H5MockServer.
+    
     Supports the following DVID REST calls:
     
     Meta info:
@@ -38,10 +40,16 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         GET  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>[/<format>]
     """
     
+    # Data is retrieved from the http response stream in chunks.
+    STREAM_CHUNK_SIZE = 1000 # (bytes)
     VOLUME_MIMETYPE = "binary/imagedata"
-    STREAM_CHUNK_SIZE = 1000
     
     def do_GET(self):
+        """
+        Handle a GET request.
+        Support queries for dataset info or volume data.
+        Everything else is an error.
+        """
         params = self.path.split('/')
         if params[0] == '':
             params = params[1:]
@@ -69,6 +77,12 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             return
 
     def _do_get_info(self, params, dataset):
+        """
+        Respond to a query for dataset info.
+        params: The full list of REST parameters with the current query.
+                For example: ['api', 'node', 'abc123', 'grayscale_vol', 'info']
+        dataset: An h5py.Dataset object the user wants info for.
+        """
         assert len(params) == 5
         cmd = params[4]
         if cmd != 'info':
@@ -85,6 +99,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write( json_text )
 
     def _do_get_data(self, params, dataset):
+        """
+        Respond to a query for volume data.
+
+        params: The full list of REST parameters with the current query.
+                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50', 'binary']
+        dataset: An h5py.Dataset object to extract the data from.
+        """
         assert len(params) == 8
         if params[0] != 'api' or \
            params[1] != 'node':
@@ -119,6 +140,9 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self._send_buffer( buf, self.wfile )
 
     def _send_buffer(self, buf, stream):
+        """
+        Write the given buffer out to the provided stream in chunks.
+        """
         remaining_bytes = len(buf)
         while remaining_bytes > 0:
             next_chunk_bytes = min( remaining_bytes, self.STREAM_CHUNK_SIZE )
@@ -128,6 +152,10 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
 class H5MockServer(HTTPServer):
     def __init__(self, h5filepath, *args, **kwargs):
+        """
+        h5filepath: The hdf5 file to serve data from.
+        See docstring above for requirements on the file contents.
+        """
         HTTPServer.__init__(self, *args, **kwargs)
         self.h5filepath = h5filepath
     
@@ -148,4 +176,4 @@ if __name__ == "__main__":
     server = H5MockServer( filename, server_address, H5CutoutRequestHandler )
     server.serve_forever()
 
-    print "SERVER EXITED"
+    print "SERVER EXITED."
