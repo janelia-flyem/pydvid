@@ -3,7 +3,7 @@ DVID Client Implementation
 Simple client for retrieving volume cutout data from a DVID Server.
 
 For test purposes, a mock DVID server is implemented in the mockserver directory.
-It serves up an HDF5 dataset over http using the DVID REST API.
+It serves up HDF5 datasets over http using the DVID REST API.
 
 The server can also be started up in stand-alone mode:
 
@@ -16,3 +16,4 @@ Furthermore, each dataset:
 - Must have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
 - Must be in C-order, e.g. zyxc
 
+See h5mockserver.py for info about its limitations.

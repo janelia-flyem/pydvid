@@ -9,31 +9,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 class VolumeClient(object):
-    STREAM_CHUNK_SIZE = 1000
+    """
+    Http client for retrieving cutout volumes from a DVID server.
+    An instance of VolumeClient is capable of retrieving data from only one remote dataset.
+    To retrieve data from multiple datasets, instantiate multiple VolumeClient objects.
+    """
 
-    def decode_to_vigra_array(self, stream, metainfo, roi_shape):
-        """
-        Decode the info in the given stream to a vigra.VigraArray.
-        """
-        # Vigra is finicky about the integer types we give it in the shape field
-        roi_shape = tuple( map(int, roi_shape) )
-        
-        # Note that dvid uses fortran order indexing
-        a = vigra.VigraArray( roi_shape,
-                              dtype=metainfo.dtype,
-                              axistags=metainfo.axistags,
-                              order='F' )
-        buf = numpy.getbuffer(a)
-        
-        # Read data from the stream in chunks
-        remaining_bytes = len(buf)
-        while remaining_bytes > 0:
-            next_chunk_bytes = min( remaining_bytes, self.STREAM_CHUNK_SIZE )
-            buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] = stream.read( next_chunk_bytes )
-            remaining_bytes -= next_chunk_bytes
-        return a
+    # Data is retrieved from the http response stream in chunks.
+    STREAM_CHUNK_SIZE = 1000 # (bytes)
 
     def __init__(self, hostname, uuid, dataset_name):
+        """
+        hostname: The DVID server hostname
+        uuid: The node uuid
+        dataset_name: The name of the dataset
+        """
         # Open a connection to the server
         self.hostname = hostname
         self.uuid = uuid
@@ -50,6 +40,11 @@ class VolumeClient(object):
         self.metainfo = parse_meta_info_from_json( response.read() )
             
     def retrieve_subvolume(self, start, stop):
+        """
+        Retrieve a subvolume from the remote server.
+        start, stop: The start and stop coordinates of the region to retrieve.
+                     Must include all axes of the dataset.
+        """
         start = numpy.asarray(start)
         stop = numpy.asarray(stop)
         shape = self.metainfo.shape
@@ -80,7 +75,25 @@ class VolumeClient(object):
             raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
         return self.decode_to_vigra_array( response, self.metainfo, roi_shape )
 
-if __name__ == "__main__":
-    pass
+    def decode_to_vigra_array(self, stream, metainfo, roi_shape):
+        """
+        Decode the info in the given stream to a vigra.VigraArray.
+        """
+        # Vigra is finicky about the integer types we give it in the shape field
+        roi_shape = tuple( map(int, roi_shape) )
         
+        # Note that dvid uses fortran order indexing
+        a = vigra.VigraArray( roi_shape,
+                              dtype=metainfo.dtype,
+                              axistags=metainfo.axistags,
+                              order='F' )
+        buf = numpy.getbuffer(a)
+        
+        # Read data from the stream in chunks
+        remaining_bytes = len(buf)
+        while remaining_bytes > 0:
+            next_chunk_bytes = min( remaining_bytes, self.STREAM_CHUNK_SIZE )
+            buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] = stream.read( next_chunk_bytes )
+            remaining_bytes -= next_chunk_bytes
+        return a
     

@@ -12,6 +12,12 @@ Furthermore, each dataset:
 - Must include a channel axis
 - Must have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
 - Must be in C-order, e.g. zyxc
+
+LIMITATIONS:
+Obviously, the aim here is not to implement the full DVID API.
+- For now, it only implements the GET responses for info and data.
+- The user's query MUST include all axes (i.e. the <dims> parameter must be something like 0_1_2, not 0_2).
+- The <format> parameter is ignored.  Data is always returned as binary volume buffer data.
 """
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
