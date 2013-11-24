@@ -21,6 +21,15 @@ Furthermore, each dataset:
 
 See h5mockserver.py for info about its limitations.
 
+Client Usage
+------------
+
+    >>> from dvidclient.volume_client import VolumeClient
+    >>> vol_client = VolumeClient( "localhost:8000", "abc123", "grayscale_data" )
+    >>> cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (1,110,120,130) ) # Must include channel
+    >>> assert isinstance(cutout_array, vigra.VigraArray)
+    >>> assert cutout_array.shape == (1,100,100,100)
+
 Run the tests
 -------------
 The unit tests require nosetests.

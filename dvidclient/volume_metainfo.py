@@ -78,6 +78,7 @@ def get_dataset_metainfo(dataset):
     dataset: An hdf5 dataset object that meets the following criteria:
              - Indexed in C-order
              - Has an 'axistags' attribute, produced using vigra.AxisTags.toJSON()
+             - Has an explicit channel axis
     """
     dtype = dataset.dtype.type
     # Tricky business here:
