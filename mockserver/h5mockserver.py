@@ -70,7 +70,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         if len(params) == 5:
             self._do_get_info(params, dataset)
-        elif len(params) == 8:
+        elif len(params) == 7:
             self._do_get_data(params, dataset)
         else:
             self.send_error(400, "Bad query syntax: {}".format( self.path ))
@@ -85,7 +85,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         """
         assert len(params) == 5
         cmd = params[4]
-        if cmd != 'info':
+        if cmd != 'schema':
             self.send_error(400, "Bad query syntax: {}".format( self.path ))
             return
         
@@ -106,13 +106,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                 For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50', 'binary']
         dataset: An h5py.Dataset object to extract the data from.
         """
-        assert len(params) == 8
+        assert len(params) == 7
         if params[0] != 'api' or \
            params[1] != 'node':
             self.send_error(400, "Bad query syntax: {}".format( self.path ))
             return
         
-        dims_str, roi_shape_str, roi_start_str, fmt = params[4:]
+        dims_str, roi_shape_str, roi_start_str = params[4:]
 
         dataset_ndims = len(dataset.shape)
         expected_dims_str = "_".join( map(str, range( dataset_ndims-1 )) )

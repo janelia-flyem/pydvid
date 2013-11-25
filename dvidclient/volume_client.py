@@ -31,7 +31,7 @@ class VolumeClient(object):
         self.dataset_name = dataset_name
         connection = HTTPConnection(hostname)
         self._connection = connection
-        rest_query = "/api/node/{uuid}/{dataset_name}/info".format( uuid=uuid, dataset_name=dataset_name )
+        rest_query = "/api/node/{uuid}/{dataset_name}/schema".format( uuid=uuid, dataset_name=dataset_name )
         connection.request( "GET", rest_query )
         
         response = connection.getresponse()
@@ -65,7 +65,7 @@ class VolumeClient(object):
         
         num_dims = len(self.metainfo.shape)
         dims_string = "_".join( map(str, range(num_dims-1) ) )
-        rest_query = "/api/node/{uuid}/{dataset_name}/{dims_string}/{roi_shape_str}/{start_str}/nd-data"\
+        rest_query = "/api/node/{uuid}/{dataset_name}/{dims_string}/{roi_shape_str}/{start_str}"\
                      "".format( uuid=self.uuid, 
                                 dataset_name=self.dataset_name, 
                                 dims_string=dims_string, 
