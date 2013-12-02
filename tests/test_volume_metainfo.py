@@ -9,36 +9,36 @@ class TestMetaInfo( object ):
     def test_parse(self):
             meta_string = """
             {
-                "axes": [
+                "Axes": [
                     {
-                        "label": "X",
-                        "resolution": 3.1,
-                        "units": "nanometers",
-                        "size": 100
+                        "Label": "X",
+                        "Resolution": 3.1,
+                        "Units": "nanometers",
+                        "Size": 100
                     },{
-                        "label": "Y",
-                        "resolution": 3.1,
-                        "units": "nanometers",
-                        "size": 200
+                        "Label": "Y",
+                        "Resolution": 3.1,
+                        "Units": "nanometers",
+                        "Size": 200
                     },{
-                        "label": "Z",
-                        "resolution": 40,
-                        "units": "nanometers",
-                        "size": 400
+                        "Label": "Z",
+                        "Resolution": 40,
+                        "Units": "nanometers",
+                        "Size": 400
                     }
                 ],
-                "values": [
+                "Values": [
                     {
-                        "type": "uint8",
-                        "label": "intensity-R"
+                        "DataType": "uint8",
+                        "Label": "intensity-R"
                     },
                     {
-                        "type": "uint8",
-                        "label": "intensity-G"
+                        "DataType": "uint8",
+                        "Label": "intensity-G"
                     },
                     {
-                        "type": "uint8",
-                        "label": "intensity-B"
+                        "DataType": "uint8",
+                        "Label": "intensity-B"
                     }
                 ]
             }
@@ -55,14 +55,14 @@ class TestMetaInfo( object ):
         metainfo = dvidclient.volume_metainfo.MetaInfo( (10,11,2), numpy.int64, vigra.defaultAxistags("xyc") )
         jsontext = dvidclient.volume_metainfo.format_metainfo_to_json( metainfo )
         metadict = json.loads( jsontext )
-        assert len( metadict["axes"] ) == 2
-        assert metadict["axes"][0]["label"] == "X"
-        assert metadict["axes"][0]["size"] == 10
-        assert metadict["axes"][1]["label"] == "Y"
-        assert metadict["axes"][1]["size"] == 11
-        assert len(metadict["values"]) == 2 # 2 channels
-        assert metadict["values"][0]["type"] == "int64"
-        assert metadict["values"][1]["type"] == "int64"
+        assert len( metadict["Axes"] ) == 2
+        assert metadict["Axes"][0]["Label"] == "X"
+        assert metadict["Axes"][0]["Size"] == 10
+        assert metadict["Axes"][1]["Label"] == "Y"
+        assert metadict["Axes"][1]["Size"] == 11
+        assert len(metadict["Values"]) == 2 # 2 channels
+        assert metadict["Values"][0]["DataType"] == "int64"
+        assert metadict["Values"][1]["DataType"] == "int64"
     
     def test_metainfo_from_h5(self):
         data = numpy.zeros( (11,10,9,3), dtype=numpy.float32 )

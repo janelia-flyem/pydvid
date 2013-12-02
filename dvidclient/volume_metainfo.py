@@ -24,22 +24,22 @@ def parse_meta_info_from_json(jsontext):
 
     # We always in include "channel" as the FIRST axis
     # (DVID uses fortran-order notation.)
-    shape.append( len(meta_dict["values"]) )
+    shape.append( len(meta_dict["Values"]) )
     tags.insert( 0, vigra.AxisInfo('c', typeFlags=vigra.AxisType.Channels) )
 
     dtypes = []
-    for channel_fields in meta_dict["values"]:
-        dtypes.append( numpy.dtype( channel_fields["type"] ).type )
+    for channel_fields in meta_dict["Values"]:
+        dtypes.append( numpy.dtype( channel_fields["DataType"] ).type )
 
-    for axisfields in meta_dict['axes']:
-        key = str(axisfields["label"]).lower()
-        res = axisfields["resolution"]
+    for axisfields in meta_dict['Axes']:
+        key = str(axisfields["Label"]).lower()
+        res = axisfields["Resolution"]
         tag = vigra.defaultAxistags(key)[0]
         tag.resolution = res
         tags.insert( len(tags), tag )
         # TODO: Check resolution units, because apparently 
         #        they can be different from one axis to the next...
-        shape.append( axisfields["size"] )
+        shape.append( axisfields["Size"] )
 
     assert all( map( lambda dtype: dtype == dtypes[0], dtypes ) ), \
         "Can't support heterogeneous channel types: {}".format( dtypes )
@@ -54,22 +54,22 @@ def format_metainfo_to_json(metainfo):
         "All DVID volume metainfo must include a channel axis!"
     
     metadict = {}
-    metadict["axes"] = []
+    metadict["Axes"] = []
     for tag, size in zip(metainfo.axistags, metainfo.shape):
         if tag.key == "c":
             continue
         axisdict = {}
-        axisdict["label"] = tag.key.upper()
-        axisdict["resolution"] = tag.resolution
-        axisdict["units"] = "nanometers" # FIXME: Hardcoded for now
-        axisdict["size"] = size
-        metadict["axes"].append( axisdict )
-    metadict["values"] = []
+        axisdict["Label"] = tag.key.upper()
+        axisdict["Resolution"] = tag.resolution
+        axisdict["Units"] = "nanometers" # FIXME: Hardcoded for now
+        axisdict["Size"] = size
+        metadict["Axes"].append( axisdict )
+    metadict["Values"] = []
     
     num_channels = metainfo.shape[ metainfo.axistags.channelIndex ]
     for _ in range( num_channels ):
-        metadict["values"].append( { "type" : metainfo.dtype.__name__,
-                                     "label" : "" } ) # FIXME: No label for now.
+        metadict["Values"].append( { "DataType" : metainfo.dtype.__name__,
+                                     "Label" : "" } ) # FIXME: No label for now.
     return json.dumps( metadict )
 
 def get_dataset_metainfo(dataset):
