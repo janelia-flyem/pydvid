@@ -1,5 +1,6 @@
 from httplib import HTTPConnection
 import threading
+import contextlib
 
 import numpy
 import vigra
@@ -58,9 +59,18 @@ class VolumeClient(object):
         assert (start >= 0).all(), "Invalid start: {}".format( start )
         assert (start < shape).all(), "Invalid start/shape: {}/{}".format( start, shape )
         assert (stop <= shape).all(), "Invalid stop/shape: {}/{}".format( stop, shape )
-        
-        roi_shape = stop - start
-        roi_shape_str = "_".join( map(str, roi_shape) )
+
+        # "Full" roi shape includes channel axis
+        full_roi_shape = stop - start
+
+        # Drop channel before requesting from DVID
+        channel_index = self.metainfo.axistags.channelIndex
+        start = numpy.delete( start, channel_index )
+        stop = numpy.delete( stop, channel_index )
+
+        # Dvid roi shape doesn't include channel
+        dvid_roi_shape = stop - start
+        roi_shape_str = "_".join( map(str, dvid_roi_shape) )
         start_str = "_".join( map(str, start) )
         
         num_dims = len(self.metainfo.shape)
@@ -74,12 +84,23 @@ class VolumeClient(object):
         # TODO: Instead of locking, auto-instantiate separate connections for each thread...
         with self._lock:
             self._connection.request( "GET", rest_query )
-            response = self._connection.getresponse()
-            if response.status != 200:
-                raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
-            return self.decode_to_vigra_array( response, self.metainfo, roi_shape )
+            with contextlib.closing( self._connection.getresponse() ) as response:
+                if response.status != 200:
+                    raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
+                vdata = self.decode_to_vigra_array( response, self.metainfo, full_roi_shape )
+    
+                # Was the response fully consumed?  Check.
+                # NOTE: This last read() is not optional.
+                # Something in the http implementation gets upset if we read out the exact amount we needed.
+                # That is, we MUST read beyond the end of the stream.  So, here we go. 
+                excess_data = response.read()
+                if excess_data:
+                    # Uh-oh, we expected it to be empty.
+                    raise Exception( "Received data was longer than expected by {} bytes.  (Expected only {} bytes.)"
+                                     "".format( len(excess_data), len(numpy.getbuffer(vdata)) ) ) 
+        return vdata
 
-    def decode_to_vigra_array(self, stream, metainfo, roi_shape):
+    def decode_to_vigra_array(self, stream, metainfo, full_roi_shape):
         """
         Decode the info in the given stream to a vigra.VigraArray.
         
@@ -87,15 +108,19 @@ class VolumeClient(object):
               Instead, the roi_shape parameter determines the size of the decoded dataset.
         """
         # Vigra is finicky about the integer types we give it in the shape field
-        roi_shape = tuple( map(int, roi_shape) )
+        full_roi_shape = tuple( map(int, full_roi_shape) )
         
         # Note that dvid uses fortran order indexing
-        a = vigra.VigraArray( roi_shape,
+        a = vigra.VigraArray( full_roi_shape,
                               dtype=metainfo.dtype,
                               axistags=metainfo.axistags,
                               order='F' )
         buf = numpy.getbuffer(a)
         
+        # We could read it in one step, but instead we'll read it in chunks to avoid big temporaries.
+        # (See below.)
+        # buf[:] = stream.read( len(buf) )
+
         # Read data from the stream in chunks
         remaining_bytes = len(buf)
         while remaining_bytes > 0:

@@ -122,6 +122,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         roi_start = tuple( int(x) for x in roi_start_str.split('_') )
         roi_shape = tuple( int(x) for x in roi_shape_str.split('_') )
+
+        if len(roi_start) != dataset_ndims-1:
+            self.send_error(400, "Invalid start coordinate: {} Expected {} dims, got {} ".format( roi_start, dataset_ndims-1, len(roi_start) ) )
+            return
+        if len(roi_shape) != dataset_ndims-1:
+            self.send_error(400, "Invalid cutout shape: {} Expected {} dims, got {} ".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
+            return
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )        
         slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
