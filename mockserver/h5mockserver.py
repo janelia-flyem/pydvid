@@ -7,7 +7,7 @@ The server can also be started up in stand-alone mode:
     $ cd mockserver
     $ PYTHONPATH=.. python h5mockserver.py my_hdf5_file.h5
 
-Internally, your hdf5 file must be a two-level heirarchy, such that each dataset is accessed via: `/uuid/dataset_name`.
+Internally, your hdf5 file must be a two-level hierarchy, such that each dataset is accessed via: `/uuid/dataset_name`.
 Furthermore, each dataset:
 - Must include a channel axis
 - Must have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
@@ -237,10 +237,10 @@ if __name__ == "__main__":
         sys.stderr.write("Usage: python {} <filename.h5>\n".format( sys.argv[0] ))
         sys.exit(1)
     
-    filename = sys.argv[1]
-    
-    server_address = ('', 8000)
-    server = H5MockServer( filename, server_address, H5CutoutRequestHandler )
-    server.serve_forever()
-
-    print "SERVER EXITED."
+    try:
+        filename = sys.argv[1]
+        server_address = ('', 8000)
+        server = H5MockServer( filename, server_address, H5CutoutRequestHandler )
+        server.serve_forever()
+    finally:
+        print "SERVER EXITED."
