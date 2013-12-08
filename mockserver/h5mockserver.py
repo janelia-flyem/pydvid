@@ -15,9 +15,10 @@ Furthermore, each dataset:
 
 LIMITATIONS:
 Obviously, the aim here is not to implement the full DVID API.
-- For now, it only implements the GET responses for info and data.
 - The user's query MUST include all axes (i.e. the <dims> parameter must be something like 0_1_2, not 0_2).
-- The <format> parameter is ignored.  Data is always returned as binary volume buffer data.
+- The <format> parameter is not supported.
+  Data is always returned as binary volume buffer data.
+  REST queries including the format parameter will result in error 400 (bad syntax)
 """
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
@@ -37,19 +38,27 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     Meta info:
         GET  /api/node/<UUID>/<data name>/info
     
-    Cutout volume:
-        GET  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>[/<format>]
+    Cutout subvolume:
+        GET  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
+    
+    Modify subvolume:
+        POST  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
     """
     
     # Data is retrieved from the http response stream in chunks.
     STREAM_CHUNK_SIZE = 1000 # (bytes)
     VOLUME_MIMETYPE = "binary/imagedata"
-    
+
     def do_GET(self):
+        self._handle_request("GET")
+    def do_POST(self):
+        self._handle_request("POST")
+
+    def _handle_request(self, method):
         """
-        Handle a GET request.
-        Support queries for dataset info or volume data.
-        Everything else is an error.
+        Entry point for all request handling.
+        Support GET queries for dataset info or subvolume data.
+        Also support POST for dataset subvolume data.
         """
         params = self.path.split('/')
         if params[0] == '':
@@ -72,7 +81,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         if len(params) == 5:
             self._do_get_info(params, dataset)
         elif len(params) == 7:
-            self._do_get_data(params, dataset)
+            if method == "GET":
+                self._do_get_data(params, dataset)
+            elif method == "POST":
+                self._do_modify_data(params, dataset)
+            else:
+                self.send_error(405, "Unsupported method: {}".format( method ))
+                return
         else:
             self.send_error(400, "Bad query syntax: {}".format( self.path ))
             return
@@ -80,6 +95,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     def _do_get_info(self, params, dataset):
         """
         Respond to a query for dataset info.
+        
         params: The full list of REST parameters with the current query.
                 For example: ['api', 'node', 'abc123', 'grayscale_vol', 'info']
         dataset: An h5py.Dataset object the user wants info for.
@@ -104,8 +120,62 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Respond to a query for volume data.
 
         params: The full list of REST parameters with the current query.
-                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50', 'binary']
+                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50']
         dataset: An h5py.Dataset object to extract the data from.
+        """
+        roi_start, roi_stop = self._determine_request_roi( params, dataset )
+        slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
+        
+        # Reverse here because API uses fortran order, but data is stored in C-order
+        data = dataset[tuple(reversed(slicing))]
+        axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
+        v_array = vigra.taggedView( data, axistags )
+        
+        metainfo = get_dataset_metainfo(dataset)
+        codec = VolumeCodec( metainfo )
+        buffer_len = codec.calculate_buffer_len( data.shape )
+
+        self.send_response(200)
+        self.send_header("Content-type", self.VOLUME_MIMETYPE)
+        self.send_header("Content-length", str(buffer_len) )
+        self.end_headers()
+
+        codec.encode_from_vigra_array( self.wfile, v_array.transpose() )
+    
+    def _do_modify_data(self, params, dataset):
+        """
+        Respond to a POST request to modify a subvolume of data.
+
+        params: The full list of REST parameters with the current query.
+                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50']
+        dataset: An h5py.Dataset object to modify.
+        """
+        roi_start, roi_stop = self._determine_request_roi( params, dataset )
+        # Prepend channel to make "full" roi
+        full_roi_start = (0,) + roi_start
+        full_roi_stop = (dataset.shape[-1],) + roi_stop
+        full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
+        slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
+        
+        metainfo = get_dataset_metainfo(dataset)
+        codec = VolumeCodec( metainfo )
+        v_array = codec.decode_to_vigra_array(self.rfile, full_roi_shape)
+
+        # Reverse here because API uses fortran order, but data is stored in C-order
+        dataset[tuple(reversed(slicing))] = v_array.transpose()
+        self.send_response(204) # "No Content" (accepted)
+        self.send_header("Content-length", 0 )
+        self.end_headers()
+    
+    def _determine_request_roi(self, params, dataset):
+        """
+        Parse the given REST parameters to determine the request region of interest.
+        
+        Returns: Coordinates start, stop (in API order, without channel index)
+        
+        params: The full list of REST parameters with the current query.
+                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50']
+        dataset: An h5py.Dataset object, used for validation of the parsed roi.
         """
         assert len(params) == 7
         if params[0] != 'api' or \
@@ -132,23 +202,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             return
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )        
-        slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
-        
-        # Reverse here because API uses fortran order, but data is stored in C-order
-        data = dataset[tuple(reversed(slicing))]
-        axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
-        v_array = vigra.taggedView( data, axistags )
-        
-        metainfo = get_dataset_metainfo(dataset)
-        codec = VolumeCodec( metainfo )
-        buffer_len = codec.calculate_buffer_len( data.shape )
-
-        self.send_response(200)
-        self.send_header("Content-type", self.VOLUME_MIMETYPE)
-        self.send_header("Content-length", str(buffer_len) )
-        self.end_headers()
-
-        codec.encode_from_vigra_array( self.wfile, v_array.transpose() )
+        return roi_start, roi_stop
 
 class H5MockServer(HTTPServer):
     def __init__(self, h5filepath, *args, **kwargs):
@@ -160,7 +214,7 @@ class H5MockServer(HTTPServer):
         self.h5filepath = h5filepath
     
     def serve_forever(self):
-        with h5py.File( self.h5filepath, 'r' ) as h5_file: # FIXME: Read-only for now (we don't yet support PUT)
+        with h5py.File( self.h5filepath ) as h5_file:
             self.h5_file = h5_file
             HTTPServer.serve_forever(self)
 

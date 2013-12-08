@@ -68,9 +68,9 @@ class TestVolumeClient(object):
         """
         Get some data from the server and check it.
         """
-        self._test_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
+        self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
     
-    def _test_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
+    def _test_retrieve_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
         """
         hostname: The dvid server host
         h5filename: The h5 file to compare against
@@ -80,8 +80,32 @@ class TestVolumeClient(object):
         """
         # Retrieve from server
         dvid_vol = VolumeClient( hostname, uuid=h5group, dataset_name=h5dataset )
-        subvol = dvid_vol.retrieve_subvolume( start, stop )
+        subvolume = dvid_vol.retrieve_subvolume( start, stop )
+        
+        # Compare to file
+        self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)
 
+    def test_push(self):
+        # Cutout dims
+        start, stop = (0,50,5,9,0), (3,150,20,10,4)
+        shape = numpy.subtract( stop, start )
+
+        # Generate test data
+        subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
+        subvolume = vigra.taggedView( subvolume, vigra.defaultAxistags('cxyzt') )
+
+        # Run test.
+        self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume )
+
+    def _test_send_subvolume(self, hostname, h5filename, h5group, h5dataset, start, stop, subvolume):
+        # Send to server
+        dvid_vol = VolumeClient( hostname, uuid=h5group, dataset_name=h5dataset )
+        dvid_vol.modify_subvolume(start, stop, subvolume)
+        
+        # Check file
+        self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)        
+
+    def _check_subvolume(self, h5filename, h5group, h5dataset, start, stop, subvolume):
         # Retrieve from file
         slicing = [ slice(x,y) for x,y in zip(start, stop) ]
         slicing = tuple(reversed(slicing))
@@ -89,7 +113,7 @@ class TestVolumeClient(object):
             expected_data = f[h5group][h5dataset][slicing]
 
         # Compare.
-        assert ( subvol.view(numpy.ndarray) == expected_data.transpose() ).all(),\
+        assert ( subvolume.view(numpy.ndarray) == expected_data.transpose() ).all(),\
             "Data from server didn't match data from file!"
 
 if __name__ == "__main__":

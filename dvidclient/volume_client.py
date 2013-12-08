@@ -78,7 +78,7 @@ class VolumeClient(object):
         with self._lock:
             self._connection.request( "POST", rest_query, body=body_data_stream.getvalue() )
             with contextlib.closing( self._connection.getresponse() ) as response:
-                if response.status != 200:
+                if response.status != 204:
                     raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
                 
                 # Something (either dvid or the httplib) gets upset if we don't read the full response.
