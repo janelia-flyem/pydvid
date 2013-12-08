@@ -45,10 +45,6 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         POST  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
     """
     
-    # Data is retrieved from the http response stream in chunks.
-    STREAM_CHUNK_SIZE = 1000 # (bytes)
-    VOLUME_MIMETYPE = "binary/imagedata"
-
     def do_GET(self):
         self._handle_request("GET")
     def do_POST(self):
@@ -136,7 +132,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         buffer_len = codec.calculate_buffer_len( data.shape )
 
         self.send_response(200)
-        self.send_header("Content-type", self.VOLUME_MIMETYPE)
+        self.send_header("Content-type", VolumeCodec.VOLUME_MIMETYPE)
         self.send_header("Content-length", str(buffer_len) )
         self.end_headers()
 

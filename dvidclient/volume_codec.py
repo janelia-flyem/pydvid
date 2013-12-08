@@ -7,6 +7,9 @@ class VolumeCodec(object):
 
     # Data is sent to/retrieved from the http response stream in chunks.
     STREAM_CHUNK_SIZE = 1000 # (bytes)
+
+    # Defined here for clients to use.
+    VOLUME_MIMETYPE = "application/octet-stream"
     
     def __init__(self, metainfo):
         """

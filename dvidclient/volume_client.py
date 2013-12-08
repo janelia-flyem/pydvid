@@ -76,7 +76,8 @@ class VolumeClient(object):
         body_data_stream = StringIO.StringIO()
         self._codec.encode_from_vigra_array(body_data_stream, new_data)
         with self._lock:
-            self._connection.request( "POST", rest_query, body=body_data_stream.getvalue() )
+            headers = { "Content-Type" : VolumeCodec.VOLUME_MIMETYPE }
+            self._connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != 204:
                     raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
