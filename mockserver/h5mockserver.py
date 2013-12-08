@@ -26,6 +26,7 @@ import h5py
 import vigra
 
 from dvidclient.volume_metainfo import get_dataset_metainfo, format_metainfo_to_json
+from dvidclient.volume_codec import VolumeCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
@@ -137,25 +138,17 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         data = dataset[tuple(reversed(slicing))]
         axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
         v_array = vigra.taggedView( data, axistags )
-        buf = numpy.getbuffer(v_array)
+        
+        metainfo = get_dataset_metainfo(dataset)
+        codec = VolumeCodec( metainfo )
+        buffer_len = codec.calculate_buffer_len( data.shape )
 
         self.send_response(200)
         self.send_header("Content-type", self.VOLUME_MIMETYPE)
-        self.send_header("Content-length", str(len(buf)))
+        self.send_header("Content-length", str(buffer_len) )
         self.end_headers()
 
-        self._send_buffer( buf, self.wfile )
-
-    def _send_buffer(self, buf, stream):
-        """
-        Write the given buffer out to the provided stream in chunks.
-        """
-        remaining_bytes = len(buf)
-        while remaining_bytes > 0:
-            next_chunk_bytes = min( remaining_bytes, self.STREAM_CHUNK_SIZE )
-            stream.write( buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] )
-            remaining_bytes -= next_chunk_bytes
-    
+        codec.encode_from_vigra_array( self.wfile, v_array.transpose() )
 
 class H5MockServer(HTTPServer):
     def __init__(self, h5filepath, *args, **kwargs):
