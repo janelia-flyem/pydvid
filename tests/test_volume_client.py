@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import tempfile
 import multiprocessing
@@ -80,7 +81,16 @@ class TestVolumeClient(object):
         """
         # Retrieve from server
         dvid_vol = VolumeClient( hostname, uuid=h5group, dataset_name=h5dataset )
-        subvolume = dvid_vol.retrieve_subvolume( start, stop )
+        try:
+            subvolume = dvid_vol.retrieve_subvolume( start, stop )
+        except VolumeClient.ErrorResponseException as ex:
+            sys.stderr.write( 'DVID server returned an error in response to {}: {}, "{}"\n'.format( ex.attempted_action, ex.status_code, ex.reason ) )
+            #if ex.status_code == 500: # Server internal error
+            #    sys.stderr.write( 'Response body was:\n' )
+            #    sys.stderr.write( ex.response_body )
+            #    sys.stderr.write('\n')
+            sys.stderr.flush()
+            raise
         
         # Compare to file
         self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)

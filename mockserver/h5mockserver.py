@@ -45,6 +45,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         POST  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
     """
     
+    class RequestError( Exception ):
+        def __init__(self, status_code, message):
+            self.status_code = status_code
+            self.message = message
+    
     def do_GET(self):
         self._handle_request("GET")
     def do_POST(self):
@@ -53,6 +58,27 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     def _handle_request(self, method):
         """
         Entry point for all request handling.
+        Call `_execute_request` and handle any exceptions.
+        """
+        try:
+            self._execute_request(method)
+        except H5CutoutRequestHandler.RequestError as ex:
+            self.send_error( ex.status_code, ex.message )
+        except Exception as ex:
+            self.send_error( 500, "Server Error: See response body for traceback.  Crashing now..." )
+            import traceback
+            self.wfile.write("<!--\n")
+            traceback.print_exc(file=self.wfile)
+            self.wfile.write("\n-->")
+            self.wfile.flush()
+            
+            # Now crash...
+            raise
+
+    def _execute_request(self, method):
+        """
+        Execute the current request.  Exceptions must be handled by the caller.
+
         Support GET queries for dataset info or subvolume data.
         Also support POST for dataset subvolume data.
         """
@@ -61,15 +87,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             params = params[1:]
 
         if len(params) < 5:
-            self.send_error(400, "Bad query syntax: {}".format( self.path ))
-            return
+            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
 
         uuid, data_name = params[2:4]
 
         dataset_path = uuid + '/' + data_name
         if dataset_path not in self.server.h5_file:
-            self.send_error(404, "Couldn't find dataset: {} in file {}".format( dataset_path, self.server.h5_file.filename ))
-            return
+            raise self.RequestError(404, "Couldn't find dataset: {} in file {}".format( dataset_path, self.server.h5_file.filename ))
 
         # For this mock server, we assume the data can be found inside our file at /uuid/data_name
         dataset = self.server.h5_file[dataset_path]
@@ -82,11 +106,9 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             elif method == "POST":
                 self._do_modify_data(params, dataset)
             else:
-                self.send_error(405, "Unsupported method: {}".format( method ))
-                return
+                raise self.RequestError(405, "Unsupported method: {}".format( method ))
         else:
-            self.send_error(400, "Bad query syntax: {}".format( self.path ))
-            return
+            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
 
     def _do_get_info(self, params, dataset):
         """
@@ -99,8 +121,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         assert len(params) == 5
         cmd = params[4]
         if cmd != 'schema':
-            self.send_error(400, "Bad query syntax: {}".format( self.path ))
-            return
+            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
         
         metainfo = get_dataset_metainfo(dataset)
         json_text = format_metainfo_to_json(metainfo)
@@ -176,26 +197,22 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         assert len(params) == 7
         if params[0] != 'api' or \
            params[1] != 'node':
-            self.send_error(400, "Bad query syntax: {}".format( self.path ))
-            return
+            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
         
         dims_str, roi_shape_str, roi_start_str = params[4:]
 
         dataset_ndims = len(dataset.shape)
         expected_dims_str = "_".join( map(str, range( dataset_ndims-1 )) )
         if dims_str != expected_dims_str:
-            self.send_error(400, "For now, queries must include all dataset axes.  Your query requested dims: {}".format( dims_str ))
-            return
+            raise self.RequestError(400, "For now, queries must include all dataset axes.  Your query requested dims: {}".format( dims_str ))
         
         roi_start = tuple( int(x) for x in roi_start_str.split('_') )
         roi_shape = tuple( int(x) for x in roi_shape_str.split('_') )
 
         if len(roi_start) != dataset_ndims-1:
-            self.send_error(400, "Invalid start coordinate: {} Expected {} dims, got {} ".format( roi_start, dataset_ndims-1, len(roi_start) ) )
-            return
+            raise self.RequestError(400, "Invalid start coordinate: {} Expected {} dims, got {} ".format( roi_start, dataset_ndims-1, len(roi_start) ) )
         if len(roi_shape) != dataset_ndims-1:
-            self.send_error(400, "Invalid cutout shape: {} Expected {} dims, got {} ".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
-            return
+            raise self.RequestError(400, "Invalid cutout shape: {} Expected {} dims, got {} ".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )        
         return roi_start, roi_stop

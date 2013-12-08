@@ -17,6 +17,13 @@ class VolumeClient(object):
     An instance of VolumeClient is capable of retrieving data from only one remote dataset.
     To retrieve data from multiple datasets, instantiate multiple VolumeClient objects.
     """
+    
+    class ErrorResponseException( Exception ):
+        def __init__(self, attempted_action, status_code, reason, response_body):
+            self.attempted_action = attempted_action
+            self.status_code = status_code
+            self.reason = reason
+            self.response_body = response_body
 
     def __init__(self, hostname, uuid, dataset_name):
         """
@@ -35,7 +42,7 @@ class VolumeClient(object):
         
         response = connection.getresponse()
         if response.status != 200:
-            raise Exception( "Error in response to metainfo query: {}, {}".format( response.status, response.reason ) )
+            raise self.ErrorResponseException( "metainfo query", response.status, response.reason, response.read() )
 
         self.metainfo = parse_meta_info_from_json( response.read() )
         self._codec = VolumeCodec( self.metainfo )
@@ -54,7 +61,7 @@ class VolumeClient(object):
             self._connection.request( "GET", rest_query )
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != 200:
-                    raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
+                    raise self.ErrorResponseException( "subvolume query", response.status, response.reason, response.read() )
                 
                 # "Full" roi shape includes channel axis
                 full_roi_shape = numpy.array(stop) - start
@@ -80,7 +87,7 @@ class VolumeClient(object):
             self._connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != 204:
-                    raise Exception( "Error in response to subvolume query: {}, {}".format( response.status, response.reason ) )
+                    raise self.ErrorResponseException( "subvolume post", response.status, response.reason, response.read() )
                 
                 # Something (either dvid or the httplib) gets upset if we don't read the full response.
                 response.read()
