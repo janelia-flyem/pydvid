@@ -5,7 +5,7 @@ import StringIO
 
 import numpy
 
-from volume_metainfo import parse_meta_info_from_json
+from volume_metainfo import parse_metainfo_from_json, format_metainfo_to_json, determine_dvid_typename
 from volume_codec import VolumeCodec
 
 import logging
@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class VolumeClient(object):
     """
-    Http client for retrieving cutout volumes from a DVID server.
-    An instance of VolumeClient is capable of retrieving data from only one remote dataset.
-    To retrieve data from multiple datasets, instantiate multiple VolumeClient objects.
+    Http client for retrieving a cutout volume from a DVID server.
+    An instance of VolumeClient is capable of retrieving data from only one remote data volume.
+    To retrieve data from multiple remote volumes, instantiate multiple VolumeClient objects.
     """
     
     class ErrorResponseException( Exception ):
@@ -25,30 +25,53 @@ class VolumeClient(object):
             self.reason = reason
             self.response_body = response_body
 
-    def __init__(self, hostname, uuid, dataset_name):
+    @classmethod
+    def create_volume(cls, hostname, uuid, data_name, metainfo):
+        """
+        Class method.
+        Open a connection to the server and create a new remote volume.
+        After creating the volume, you can instantiate a new VolumeClient to access it.
+        """
+        with contextlib.closing( HTTPConnection(hostname) ) as connection:
+            dvid_typename = determine_dvid_typename(metainfo)
+            rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
+                         "".format( **locals() )
+            metainfo_json = format_metainfo_to_json(metainfo)
+            headers = { "Content-Type" : "text/json" }
+            connection.request( "POST", rest_query, body=metainfo_json, headers=headers )
+    
+            with contextlib.closing( connection.getresponse() ) as response:
+                if response.status != 204:
+                    raise VolumeClient.ErrorResponseException( "create new data", response.status, response.reason, response.read() )
+                response_text = response.read()
+                if response_text:
+                    raise Exception( "Expected an empty response from the DVID server.  "
+                                     "Got: {}".format( response_text ) )
+
+    def __init__(self, hostname, uuid, data_name):
         """
         hostname: The DVID server hostname
         uuid: The node uuid
-        dataset_name: The name of the dataset
+        data_name: The name of the volume
         """
         # Open a connection to the server
         self.hostname = hostname
         self.uuid = uuid
-        self.dataset_name = dataset_name
+        self.data_name = data_name
         connection = HTTPConnection(hostname)
         self._connection = connection
-        rest_query = "/api/node/{uuid}/{dataset_name}/schema".format( uuid=uuid, dataset_name=dataset_name )
+        rest_query = "/api/node/{uuid}/{data_name}/schema".format( uuid=uuid, data_name=data_name )
         connection.request( "GET", rest_query )
         
         response = connection.getresponse()
         if response.status != 200:
             raise self.ErrorResponseException( "metainfo query", response.status, response.reason, response.read() )
 
-        self.metainfo = parse_meta_info_from_json( response.read() )
+        self.metainfo = parse_metainfo_from_json( response.read() )
         self._codec = VolumeCodec( self.metainfo )
         
         self._lock = threading.Lock() # TODO: Instead of locking, auto-instantiate separate connections for each thread...
-        
+    
     def retrieve_subvolume(self, start, stop):
         """
         Retrieve a subvolume from the remote server.
@@ -116,9 +139,9 @@ class VolumeClient(object):
         
         num_dims = len(self.metainfo.shape)
         dims_string = "_".join( map(str, range(num_dims-1) ) )
-        rest_query = "/api/node/{uuid}/{dataset_name}/{dims_string}/{roi_shape_str}/{start_str}"\
+        rest_query = "/api/node/{uuid}/{data_name}/{dims_string}/{roi_shape_str}/{start_str}"\
                      "".format( uuid=self.uuid, 
-                                dataset_name=self.dataset_name, 
+                                data_name=self.data_name, 
                                 dims_string=dims_string, 
                                 roi_shape_str=roi_shape_str, 
                                 start_str=start_str )

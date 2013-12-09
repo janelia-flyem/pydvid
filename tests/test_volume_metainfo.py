@@ -43,16 +43,18 @@ class TestMetaInfo( object ):
                 ]
             }
             """
-            shape, dtype, tags = dvidclient.volume_metainfo.parse_meta_info_from_json(meta_string)
+            shape, dtype, tags = dvidclient.volume_metainfo.parse_metainfo_from_json(meta_string)
             assert shape == (3, 100,200,400), "Wrong shape: {}".format( shape )
             assert dtype == numpy.uint8
             assert [tag.key for tag in tags] == ['c', 'x', 'y', 'z']
             assert tags['x'].resolution == 3.1
             assert tags['y'].resolution == 3.1
             assert tags['z'].resolution == 40
+            assert tags.channelLabels == ["intensity-R", "intensity-G", "intensity-B"]
         
     def test_format_to_json(self):
         metainfo = dvidclient.volume_metainfo.MetaInfo( (10,11,2), numpy.int64, vigra.defaultAxistags("xyc") )
+        metainfo.axistags.channelLabels = ["R", "G"]
         jsontext = dvidclient.volume_metainfo.format_metainfo_to_json( metainfo )
         metadict = json.loads( jsontext )
         assert len( metadict["Axes"] ) == 2
@@ -63,16 +65,16 @@ class TestMetaInfo( object ):
         assert len(metadict["Values"]) == 2 # 2 channels
         assert metadict["Values"][0]["DataType"] == "int64"
         assert metadict["Values"][1]["DataType"] == "int64"
+        assert metadict["Values"][0]["Label"] == "R"
+        assert metadict["Values"][1]["Label"] == "G"
     
     def test_metainfo_from_h5(self):
-        data = numpy.zeros( (11,10,9,3), dtype=numpy.float32 )
-        data = vigra.taggedView(data, vigra.defaultAxistags("zyxc"))
-        # In-memory hdf5 file...
-        f = h5py.File("dummy.h5", mode='w', driver='core', backing_store=False)
-        dset = f.create_dataset( 'dset', data=data )
-        dset.attrs["axistags"] = data.axistags.toJSON()
+        starting_metainfo = dvidclient.volume_metainfo.MetaInfo( (3, 9, 10, 11), numpy.float32, vigra.defaultAxistags("cxyz") )
+        starting_metainfo.axistags.channelLabels = ["R", "G", "B"]
+        f = h5py.File("dummy.h5", mode='w', driver='core', backing_store=False) # In-memory
+        dset = dvidclient.volume_metainfo.create_empty_h5_dataset(f, 'dset', starting_metainfo, chunks=True)
         
-        metainfo = dvidclient.volume_metainfo.get_dataset_metainfo( dset )
+        metainfo = dvidclient.volume_metainfo.get_h5_dataset_metainfo( dset )
         assert metainfo.dtype == numpy.float32
 
         # Order is auto-converted from C-order to Fortran-order
@@ -82,6 +84,7 @@ class TestMetaInfo( object ):
         assert metainfo.axistags['x'].typeFlags == vigra.AxisType.Space
         assert metainfo.axistags['y'].typeFlags == vigra.AxisType.Space
         assert metainfo.axistags['z'].typeFlags == vigra.AxisType.Space
+        assert metainfo.axistags.channelLabels == ["R", "G", "B"]
 
 if __name__ == "__main__":
     import sys

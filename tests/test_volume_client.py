@@ -2,6 +2,8 @@ import os
 import sys
 import shutil
 import tempfile
+import functools
+import threading
 import multiprocessing
 
 import numpy
@@ -9,7 +11,28 @@ import vigra
 import h5py
 
 from dvidclient.volume_client import VolumeClient
+from dvidclient.volume_metainfo import MetaInfo, get_h5_dataset_metainfo
 from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
+
+def print_response_exception(func):
+    """
+    Decorator.
+    If a test raises an ErrorResponseException, print the details to stderr.
+    """
+    @functools.wraps(func)
+    def f( *args ):
+        try:
+            func(*args)
+        except VolumeClient.ErrorResponseException as ex:
+            sys.stderr.write( 'DVID server returned an error in response to {}: {}, "{}"\n'.format( ex.attempted_action, ex.status_code, ex.reason ) )
+            #if ex.status_code == 500: # Server internal error
+            #    sys.stderr.write( 'Response body was:\n' )
+            #    sys.stderr.write( ex.response_body )
+            #    sys.stderr.write('\n')
+            sys.stderr.flush()
+            raise
+    f.__wrapped__ = func # Emulate python 3 behavior of @wraps
+    return f
 
 class TestVolumeClient(object):
     
@@ -17,11 +40,13 @@ class TestVolumeClient(object):
     def setupClass(cls):
         """
         Override.  Called by nosetests.
+        - Create an hdf5 file to store the test data
+        - Start the mock server, which serves the test data from the file.
         """
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc = cls._start_mockserver( cls.test_filepath )
+        cls.server_proc = cls._start_mockserver( cls.test_filepath, same_process=False )
 
     @classmethod
     def teardownClass(cls):
@@ -29,7 +54,8 @@ class TestVolumeClient(object):
         Override.  Called by nosetests.
         """
         shutil.rmtree(cls._tmp_dir)
-        cls.server_proc.terminate()
+        if isinstance( cls.server_proc, multiprocessing.Process ):
+            cls.server_proc.terminate()
 
     @classmethod
     def _generate_testdata_h5(cls, test_filepath):
@@ -52,25 +78,46 @@ class TestVolumeClient(object):
             dset.attrs["axistags"] = vigra.defaultAxistags("tzyxc").toJSON()
 
     @classmethod
-    def _start_mockserver(cls, h5filepath):
+    def _start_mockserver(cls, h5filepath, same_process=False):
         """
         Start the mock DVID server in a separate process.
+        
+        h5filepath: The file to serve up.
+        same_process: If True, start the server in this process as a 
+                      separate thread (useful for debugging).
+                      Otherwise, start the server in its own process (default).
         """
         def server_main():
             server_address = ('', 8000)
             server = H5MockServer( h5filepath, server_address, H5CutoutRequestHandler )
             server.serve_forever()
     
-        server_proc = multiprocessing.Process( target=server_main )
-        server_proc.start()    
+        if same_process:
+            server_proc = threading.Thread( target=server_main )
+            server_proc.daemon = True
+        else:
+            server_proc = multiprocessing.Process( target=server_main )
+        server_proc.start()
         return server_proc
     
+    @print_response_exception
+    def test_create_volume(self):
+        volume_name = 'new_volume'
+        metainfo = MetaInfo( (4,100,100,100), numpy.uint8, vigra.defaultAxistags('cxyz') )
+        VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, metainfo )
+        
+        with h5py.File(self.test_filepath, 'r') as f:
+            assert volume_name in f[self.data_uuid], "Volume wasn't created"
+            assert get_h5_dataset_metainfo( f[self.data_uuid][volume_name] ) == metainfo,\
+                "New volume has the wrong metainfo"
+
     def test_cutout(self):
         """
         Get some data from the server and check it.
         """
         self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
-    
+
+    @print_response_exception    
     def _test_retrieve_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
         """
         hostname: The dvid server host
@@ -80,17 +127,8 @@ class TestVolumeClient(object):
         start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
         """
         # Retrieve from server
-        dvid_vol = VolumeClient( hostname, uuid=h5group, dataset_name=h5dataset )
-        try:
-            subvolume = dvid_vol.retrieve_subvolume( start, stop )
-        except VolumeClient.ErrorResponseException as ex:
-            sys.stderr.write( 'DVID server returned an error in response to {}: {}, "{}"\n'.format( ex.attempted_action, ex.status_code, ex.reason ) )
-            #if ex.status_code == 500: # Server internal error
-            #    sys.stderr.write( 'Response body was:\n' )
-            #    sys.stderr.write( ex.response_body )
-            #    sys.stderr.write('\n')
-            sys.stderr.flush()
-            raise
+        dvid_vol = VolumeClient( hostname, uuid=h5group, data_name=h5dataset )
+        subvolume = dvid_vol.retrieve_subvolume( start, stop )
         
         # Compare to file
         self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)
@@ -107,9 +145,10 @@ class TestVolumeClient(object):
         # Run test.
         self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume )
 
+    @print_response_exception    
     def _test_send_subvolume(self, hostname, h5filename, h5group, h5dataset, start, stop, subvolume):
         # Send to server
-        dvid_vol = VolumeClient( hostname, uuid=h5group, dataset_name=h5dataset )
+        dvid_vol = VolumeClient( hostname, uuid=h5group, data_name=h5dataset )
         dvid_vol.modify_subvolume(start, stop, subvolume)
         
         # Check file

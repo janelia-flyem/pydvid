@@ -26,7 +26,7 @@ import numpy
 import h5py
 import vigra
 
-from dvidclient.volume_metainfo import get_dataset_metainfo, format_metainfo_to_json
+from dvidclient.volume_metainfo import get_h5_dataset_metainfo, format_metainfo_to_json, parse_metainfo_from_json, create_empty_h5_dataset, determine_dvid_typename
 from dvidclient.volume_codec import VolumeCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
@@ -66,14 +66,15 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             self.send_error( ex.status_code, ex.message )
         except Exception as ex:
             self.send_error( 500, "Server Error: See response body for traceback.  Crashing now..." )
+            
+            # Write exception traceback to the response body as an html comment.
             import traceback
             self.wfile.write("<!--\n")
             traceback.print_exc(file=self.wfile)
             self.wfile.write("\n-->")
             self.wfile.flush()
             
-            # Now crash...
-            raise
+            raise # Now crash...
 
     def _execute_request(self, method):
         """
@@ -89,13 +90,22 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         if len(params) < 5:
             raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
 
-        uuid, data_name = params[2:4]
+        uuid = params[2]
 
+        # First check to see if the user is attempting to create a new volume.
+        if len(params) == 6 and method == "POST":
+            self._do_create_volume(params, uuid)
+            return
+
+        data_name = params[3]
         dataset_path = uuid + '/' + data_name
-        if dataset_path not in self.server.h5_file:
-            raise self.RequestError(404, "Couldn't find dataset: {} in file {}".format( dataset_path, self.server.h5_file.filename ))
 
-        # For this mock server, we assume the data can be found inside our file at /uuid/data_name
+        # Otherwise, the volume should already exist.
+        if dataset_path not in self.server.h5_file:
+            raise self.RequestError( 404, "Couldn't find dataset: {} in file {}"
+                                          "".format( dataset_path, self.server.h5_file.filename ) )
+
+        # For this mock server, we assume the data can be found inside our h5 file at /uuid/data_name
         dataset = self.server.h5_file[dataset_path]
 
         if len(params) == 5:
@@ -106,9 +116,55 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             elif method == "POST":
                 self._do_modify_data(params, dataset)
             else:
-                raise self.RequestError(405, "Unsupported method: {}".format( method ))
+                raise self.RequestError( 405, "Unsupported method for query: {} {}"
+                                              "".format( method, self.path ) )
         else:
             raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
+
+    def _do_create_volume(self, params, uuid):
+        """
+        The http client wants to create a new volume.
+        Create it.
+        """
+        assert len(params) == 6
+        
+        if params[3] != "new":
+            raise self.RequestError(400, "Bad request syntax: {}".format( self.path ))
+        
+        if uuid not in self.server.h5_file:
+            raise self.RequestError( 404, "No such node with uuid {}".format( uuid ) )
+        
+        data_name = params[5]
+        dataset_path = uuid + '/' + data_name
+        
+        if dataset_path in self.server.h5_file:
+            raise self.RequestError( 409, "Cannot create.  Volume {} already exists."
+                                     .format( dataset_path ) )
+
+        # Must read exact bytes.
+        # Apparently rfile.read() just hangs.
+        body_len = self.headers.get("Content-Length")
+        metainfo_json = self.rfile.read( int(body_len) )
+        try:
+            metainfo = parse_metainfo_from_json( metainfo_json )
+        except ValueError as ex:
+            raise self.RequestError( 400, 'Can\'t create volume.  '
+                                          'Error parsing volume description: {}\n'
+                                          'Invalid description text was:\n{}'
+                                          ''.format( ex.args[0], metainfo_json ) )
+        rest_typename = params[4]
+        expected_typename = determine_dvid_typename( metainfo )
+        if rest_typename != expected_typename:
+            raise self.RequestError( 400, "Cannot create volume.  "
+                                          "REST typename was {}, but metainfo JSON implies typename {}"
+                                          "".format( rest_typename, expected_typename ) )
+
+        create_empty_h5_dataset( self.server.h5_file, dataset_path, metainfo )
+        self.server.h5_file.flush()
+
+        self.send_response(204) # "No Content" (accepted)
+        self.send_header("Content-length", "0" )
+        self.end_headers()
 
     def _do_get_info(self, params, dataset):
         """
@@ -123,7 +179,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         if cmd != 'schema':
             raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
         
-        metainfo = get_dataset_metainfo(dataset)
+        metainfo = get_h5_dataset_metainfo(dataset)
         json_text = format_metainfo_to_json(metainfo)
 
         self.send_response(200)
@@ -148,7 +204,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
         v_array = vigra.taggedView( data, axistags )
         
-        metainfo = get_dataset_metainfo(dataset)
+        metainfo = get_h5_dataset_metainfo(dataset)
         codec = VolumeCodec( metainfo )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
@@ -174,7 +230,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
         
-        metainfo = get_dataset_metainfo(dataset)
+        metainfo = get_h5_dataset_metainfo(dataset)
         codec = VolumeCodec( metainfo )
         v_array = codec.decode_to_vigra_array(self.rfile, full_roi_shape)
 
@@ -204,17 +260,20 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         dataset_ndims = len(dataset.shape)
         expected_dims_str = "_".join( map(str, range( dataset_ndims-1 )) )
         if dims_str != expected_dims_str:
-            raise self.RequestError(400, "For now, queries must include all dataset axes.  Your query requested dims: {}".format( dims_str ))
+            raise self.RequestError( 400, "For now, queries must include all dataset axes.  "
+                                          "Your query requested dims: {}".format( dims_str ) )
         
         roi_start = tuple( int(x) for x in roi_start_str.split('_') )
         roi_shape = tuple( int(x) for x in roi_shape_str.split('_') )
 
         if len(roi_start) != dataset_ndims-1:
-            raise self.RequestError(400, "Invalid start coordinate: {} Expected {} dims, got {} ".format( roi_start, dataset_ndims-1, len(roi_start) ) )
+            raise self.RequestError( 400, "Invalid start coordinate: {} Expected {} dims, got {} "
+                                          "".format( roi_start, dataset_ndims-1, len(roi_start) ) )
         if len(roi_shape) != dataset_ndims-1:
-            raise self.RequestError(400, "Invalid cutout shape: {} Expected {} dims, got {} ".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
+            raise self.RequestError( 400, "Invalid cutout shape: {} Expected {} dims, got {} "
+                                          "".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
         
-        roi_stop = tuple( numpy.array(roi_start) + roi_shape )        
+        roi_stop = tuple( numpy.array(roi_start) + roi_shape )
         return roi_start, roi_stop
 
 class H5MockServer(HTTPServer):
