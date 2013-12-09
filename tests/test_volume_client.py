@@ -11,7 +11,7 @@ import vigra
 import h5py
 
 from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metainfo import MetaInfo, get_h5_dataset_metainfo
+from dvidclient.volume_metainfo import MetaInfo
 from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
 
 def print_response_exception(func):
@@ -108,7 +108,7 @@ class TestVolumeClient(object):
         
         with h5py.File(self.test_filepath, 'r') as f:
             assert volume_name in f[self.data_uuid], "Volume wasn't created"
-            assert get_h5_dataset_metainfo( f[self.data_uuid][volume_name] ) == metainfo,\
+            assert MetaInfo.create_from_h5_dataset( f[self.data_uuid][volume_name] ) == metainfo,\
                 "New volume has the wrong metainfo"
 
     def test_cutout(self):

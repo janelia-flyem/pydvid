@@ -26,7 +26,7 @@ import numpy
 import h5py
 import vigra
 
-from dvidclient.volume_metainfo import get_h5_dataset_metainfo, format_metainfo_to_json, parse_metainfo_from_json, create_empty_h5_dataset, determine_dvid_typename
+from dvidclient.volume_metainfo import MetaInfo
 from dvidclient.volume_codec import VolumeCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
@@ -146,20 +146,20 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         body_len = self.headers.get("Content-Length")
         metainfo_json = self.rfile.read( int(body_len) )
         try:
-            metainfo = parse_metainfo_from_json( metainfo_json )
+            metainfo = MetaInfo.create_from_json( metainfo_json )
         except ValueError as ex:
             raise self.RequestError( 400, 'Can\'t create volume.  '
                                           'Error parsing volume description: {}\n'
                                           'Invalid description text was:\n{}'
                                           ''.format( ex.args[0], metainfo_json ) )
         rest_typename = params[4]
-        expected_typename = determine_dvid_typename( metainfo )
+        expected_typename = metainfo.determine_dvid_typename()
         if rest_typename != expected_typename:
             raise self.RequestError( 400, "Cannot create volume.  "
                                           "REST typename was {}, but metainfo JSON implies typename {}"
                                           "".format( rest_typename, expected_typename ) )
 
-        create_empty_h5_dataset( self.server.h5_file, dataset_path, metainfo )
+        metainfo.create_empty_h5_dataset( self.server.h5_file, dataset_path )
         self.server.h5_file.flush()
 
         self.send_response(204) # "No Content" (accepted)
@@ -179,8 +179,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         if cmd != 'schema':
             raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
         
-        metainfo = get_h5_dataset_metainfo(dataset)
-        json_text = format_metainfo_to_json(metainfo)
+        metainfo = MetaInfo.create_from_h5_dataset(dataset)
+        json_text = metainfo.format_to_json()
 
         self.send_response(200)
         self.send_header("Content-type", "text/json")
@@ -204,7 +204,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
         v_array = vigra.taggedView( data, axistags )
         
-        metainfo = get_h5_dataset_metainfo(dataset)
+        metainfo = MetaInfo.create_from_h5_dataset(dataset)
         codec = VolumeCodec( metainfo )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
@@ -230,7 +230,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
         
-        metainfo = get_h5_dataset_metainfo(dataset)
+        metainfo = MetaInfo.create_from_h5_dataset(dataset)
         codec = VolumeCodec( metainfo )
         v_array = codec.decode_to_vigra_array(self.rfile, full_roi_shape)
 

@@ -5,7 +5,7 @@ import StringIO
 
 import numpy
 
-from volume_metainfo import parse_metainfo_from_json, format_metainfo_to_json, determine_dvid_typename
+from volume_metainfo import MetaInfo
 from volume_codec import VolumeCodec
 
 import logging
@@ -33,10 +33,10 @@ class VolumeClient(object):
         After creating the volume, you can instantiate a new VolumeClient to access it.
         """
         with contextlib.closing( HTTPConnection(hostname) ) as connection:
-            dvid_typename = determine_dvid_typename(metainfo)
+            dvid_typename = metainfo.determine_dvid_typename()
             rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
                          "".format( **locals() )
-            metainfo_json = format_metainfo_to_json(metainfo)
+            metainfo_json = metainfo.format_to_json()
             headers = { "Content-Type" : "text/json" }
             connection.request( "POST", rest_query, body=metainfo_json, headers=headers )
     
@@ -67,7 +67,7 @@ class VolumeClient(object):
         if response.status != 200:
             raise self.ErrorResponseException( "metainfo query", response.status, response.reason, response.read() )
 
-        self.metainfo = parse_metainfo_from_json( response.read() )
+        self.metainfo = MetaInfo.create_from_json( response.read() )
         self._codec = VolumeCodec( self.metainfo )
         
         self._lock = threading.Lock() # TODO: Instead of locking, auto-instantiate separate connections for each thread...
