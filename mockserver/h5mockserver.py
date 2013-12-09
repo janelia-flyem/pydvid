@@ -35,16 +35,19 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     
     Supports the following DVID REST calls:
     
-    Meta info:
+    Description info (a.k.a. metainfo):
         GET  /api/node/<UUID>/<data name>/info
     
-    Cutout subvolume:
+    Create volume:
+        POST /api/dataset/<UUID>/new/<datatype name>/<data name>
+    
+    Retrieve subvolume:
         GET  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
     
     Modify subvolume:
         POST  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
     """
-    
+
     class RequestError( Exception ):
         def __init__(self, status_code, message):
             self.status_code = status_code
@@ -276,14 +279,22 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )
         return roi_start, roi_stop
 
+    def log_request(self, *args, **kwargs):
+        """
+        Override from BaseHTTPRequestHandler, so we can respect the H5MockServer's disable_logging setting.
+        """
+        if not self.server.disable_logging:
+            BaseHTTPRequestHandler.log_request(self, *args, **kwargs )
+
 class H5MockServer(HTTPServer):
-    def __init__(self, h5filepath, *args, **kwargs):
+    def __init__(self, h5filepath, disable_logging, *args, **kwargs):
         """
         h5filepath: The hdf5 file to serve data from.
         See docstring above for requirements on the file contents.
         """
         HTTPServer.__init__(self, *args, **kwargs)
         self.h5filepath = h5filepath
+        self.disable_logging = disable_logging
     
     def serve_forever(self):
         with h5py.File( self.h5filepath ) as h5_file:
@@ -299,7 +310,7 @@ if __name__ == "__main__":
     try:
         filename = sys.argv[1]
         server_address = ('', 8000)
-        server = H5MockServer( filename, server_address, H5CutoutRequestHandler )
+        server = H5MockServer( filename, False, server_address, H5CutoutRequestHandler )
         server.serve_forever()
     finally:
         print "SERVER EXITED."

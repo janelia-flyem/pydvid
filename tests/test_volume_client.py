@@ -24,7 +24,8 @@ def print_response_exception(func):
         try:
             func(*args)
         except VolumeClient.ErrorResponseException as ex:
-            sys.stderr.write( 'DVID server returned an error in response to {}: {}, "{}"\n'.format( ex.attempted_action, ex.status_code, ex.reason ) )
+            sys.stderr.write( 'DVID server returned an error in response to {}: {}, "{}"\n'
+                              ''.format( ex.attempted_action, ex.status_code, ex.reason ) )
             #if ex.status_code == 500: # Server internal error
             #    sys.stderr.write( 'Response body was:\n' )
             #    sys.stderr.write( ex.response_body )
@@ -78,7 +79,7 @@ class TestVolumeClient(object):
             dset.attrs["axistags"] = vigra.defaultAxistags("tzyxc").toJSON()
 
     @classmethod
-    def _start_mockserver(cls, h5filepath, same_process=False):
+    def _start_mockserver(cls, h5filepath, same_process=False, disable_server_logging=True):
         """
         Start the mock DVID server in a separate process.
         
@@ -86,10 +87,11 @@ class TestVolumeClient(object):
         same_process: If True, start the server in this process as a 
                       separate thread (useful for debugging).
                       Otherwise, start the server in its own process (default).
+        disable_server_logging: If true, disable the normal HttpServer logging of every request.
         """
         def server_main():
             server_address = ('', 8000)
-            server = H5MockServer( h5filepath, server_address, H5CutoutRequestHandler )
+            server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
             server.serve_forever()
     
         if same_process:
@@ -102,6 +104,9 @@ class TestVolumeClient(object):
     
     @print_response_exception
     def test_create_volume(self):
+        """
+        Create a new remote volume.  Verify that the server created it in the hdf5 file.
+        """
         volume_name = 'new_volume'
         metainfo = MetaInfo( (4,100,100,100), numpy.uint8, vigra.defaultAxistags('cxyz') )
         VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, metainfo )
@@ -115,7 +120,8 @@ class TestVolumeClient(object):
         """
         Get some data from the server and check it.
         """
-        self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
+        self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, 
+                                    self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
 
     @print_response_exception    
     def _test_retrieve_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
@@ -134,6 +140,9 @@ class TestVolumeClient(object):
         self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)
 
     def test_push(self):
+        """
+        Modify a remote subvolume and verify that the server wrote it.
+        """
         # Cutout dims
         start, stop = (0,50,5,9,0), (3,150,20,10,4)
         shape = numpy.subtract( stop, start )
@@ -143,10 +152,19 @@ class TestVolumeClient(object):
         subvolume = vigra.taggedView( subvolume, vigra.defaultAxistags('cxyzt') )
 
         # Run test.
-        self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume )
+        self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, 
+                                   self.data_name, start, stop, subvolume )
 
     @print_response_exception    
     def _test_send_subvolume(self, hostname, h5filename, h5group, h5dataset, start, stop, subvolume):
+        """
+        hostname: The dvid server host
+        h5filename: The h5 file to compare against
+        h5group: The hdf5 group, also used as the uuid of the dvid dataset
+        h5dataset: The dataset name, also used as the name of the dvid dataset
+        start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
+        subvolume: The data to send.  Must be of the correct shape for start,stop coordinates.
+        """
         # Send to server
         dvid_vol = VolumeClient( hostname, uuid=h5group, data_name=h5dataset )
         dvid_vol.modify_subvolume(start, stop, subvolume)
@@ -155,6 +173,9 @@ class TestVolumeClient(object):
         self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)        
 
     def _check_subvolume(self, h5filename, h5group, h5dataset, start, stop, subvolume):
+        """
+        Compare a given subvolume to an hdf5 dataset.  Assert if they don't match.
+        """
         # Retrieve from file
         slicing = [ slice(x,y) for x,y in zip(start, stop) ]
         slicing = tuple(reversed(slicing))
