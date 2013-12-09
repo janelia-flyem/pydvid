@@ -86,8 +86,9 @@ class VolumeClient(object):
                 if response.status != 200:
                     raise self.ErrorResponseException( "subvolume query", response.status, response.reason, response.read() )
                 
-                # "Full" roi shape includes channel axis
+                # "Full" roi shape includes channel axis and ALL channels
                 full_roi_shape = numpy.array(stop) - start
+                full_roi_shape[0] = self.metainfo.shape[0]
                 vdata = self._codec.decode_to_vigra_array( response, full_roi_shape )
     
                 # Was the response fully consumed?  Check.
@@ -99,9 +100,12 @@ class VolumeClient(object):
                     # Uh-oh, we expected it to be empty.
                     raise Exception( "Received data was longer than expected by {} bytes.  (Expected only {} bytes.)"
                                      "".format( len(excess_data), len(numpy.getbuffer(vdata)) ) ) 
-        return vdata
+        return vdata[start[0]:stop[0]]
 
     def modify_subvolume(self, start, stop, new_data):
+        assert start[0] == 0, "Subvolume modifications must include all channels."
+        assert stop[0] == self.metainfo.shape[0], "Subvolume modifications must include all channels."
+
         rest_query = self._format_subvolume_rest_query(start, stop)
         body_data_stream = StringIO.StringIO()
         self._codec.encode_from_vigra_array(body_data_stream, new_data)
