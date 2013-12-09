@@ -24,6 +24,14 @@ class VolumeClient(object):
             self.status_code = status_code
             self.reason = reason
             self.response_body = response_body
+        
+        def __str__(self):
+            caption = 'While attempting "{}" DVID returned an error: {}, "{}"\n'\
+                      ''.format( self.attempted_action, self.status_code, self.reason )
+            if self.status_code == 500:
+                caption += "Server response body:\n"
+                caption += self.response_body
+            return caption
 
     @classmethod
     def create_volume(cls, hostname, uuid, data_name, metainfo):

@@ -14,27 +14,6 @@ from dvidclient.volume_client import VolumeClient
 from dvidclient.volume_metainfo import MetaInfo
 from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
 
-def print_response_exception(func):
-    """
-    Decorator.
-    If a test raises an ErrorResponseException, print the details to stderr.
-    """
-    @functools.wraps(func)
-    def f( *args ):
-        try:
-            func(*args)
-        except VolumeClient.ErrorResponseException as ex:
-            sys.stderr.write( 'DVID server returned an error in response to {}: {}, "{}"\n'
-                              ''.format( ex.attempted_action, ex.status_code, ex.reason ) )
-            #if ex.status_code == 500: # Server internal error
-            #    sys.stderr.write( 'Response body was:\n' )
-            #    sys.stderr.write( ex.response_body )
-            #    sys.stderr.write('\n')
-            sys.stderr.flush()
-            raise
-    f.__wrapped__ = func # Emulate python 3 behavior of @wraps
-    return f
-
 class TestVolumeClient(object):
     
     @classmethod
@@ -102,7 +81,6 @@ class TestVolumeClient(object):
         server_proc.start()
         return server_proc
     
-    @print_response_exception
     def test_create_volume(self):
         """
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
@@ -123,8 +101,7 @@ class TestVolumeClient(object):
         """
         self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, 
                                     self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
-
-    @print_response_exception    
+    
     def _test_retrieve_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
         """
         hostname: The dvid server host
@@ -156,7 +133,6 @@ class TestVolumeClient(object):
         self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, 
                                    self.data_name, start, stop, subvolume )
 
-    @print_response_exception    
     def _test_send_subvolume(self, hostname, h5filename, h5group, h5dataset, start, stop, subvolume):
         """
         hostname: The dvid server host
@@ -207,7 +183,7 @@ class TestVolumeClient(object):
     
         # Modify it
         new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-        tagged_data = vigra.taggedView( new_data, vigra.defaultAxistags('cxyz') )
+        tagged_data = vigra.taggedView( new_data, metainfo.axistags )
         cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
 
 if __name__ == "__main__":
