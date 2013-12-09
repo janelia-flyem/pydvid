@@ -24,11 +24,27 @@ See h5mockserver.py for info about its limitations.
 Client Usage
 ------------
 
-    >>> from dvidclient.volume_client import VolumeClient
-    >>> vol_client = VolumeClient( "localhost:8000", "abc123", "grayscale_data" )
-    >>> cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (1,110,120,130) ) # Must include channel
-    >>> assert isinstance(cutout_array, vigra.VigraArray)
-    >>> assert cutout_array.shape == (1,100,100,100)
+    import numpy, vigra
+    from dvidclient.volume_client import VolumeClient
+    from dvidclient.volume_metainfo import MetaInfo
+    
+    # Create a new remote volume
+    uuid = 'abcde'
+    metainfo = MetaInfo( (4,200,200,200), numpy.uint8, vigra.defaultAxistags('cxyz') )
+    VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", metainfo )
+
+    # Open connection for a particular volume    
+    vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )
+    
+    # Read from it (first axis is channel)
+    cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (1,110,120,130) )
+    assert isinstance(cutout_array, vigra.VigraArray)
+    assert cutout_array.shape == (1,100,100,100)
+
+    # Modify it
+    new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
+    tagged_data = vigra.taggedView( new_data, metainfo.axistags )
+    cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
 
 Run the tests
 -------------

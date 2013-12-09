@@ -116,6 +116,7 @@ class TestVolumeClient(object):
             assert MetaInfo.create_from_h5_dataset( f[self.data_uuid][volume_name] ) == metainfo,\
                 "New volume has the wrong metainfo"
 
+
     def test_cutout(self):
         """
         Get some data from the server and check it.
@@ -185,6 +186,29 @@ class TestVolumeClient(object):
         # Compare.
         assert ( subvolume.view(numpy.ndarray) == expected_data.transpose() ).all(),\
             "Data from server didn't match data from file!"
+
+    def test_zz_readme_usage(self):
+        import numpy, vigra
+        from dvidclient.volume_client import VolumeClient
+        from dvidclient.volume_metainfo import MetaInfo
+        
+        # Create a new remote volume
+        uuid = 'abcde'
+        metainfo = MetaInfo( (4,200,200,200), numpy.uint8, vigra.defaultAxistags('cxyz') )
+        VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", metainfo )
+    
+        # Open connection for a particular volume    
+        vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )
+        
+        # Read from it
+        cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (1,110,120,130) ) # First axis is channel.
+        assert isinstance(cutout_array, vigra.VigraArray)
+        assert cutout_array.shape == (1,100,100,100)
+    
+        # Modify it
+        new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
+        tagged_data = vigra.taggedView( new_data, vigra.defaultAxistags('cxyz') )
+        cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
 
 if __name__ == "__main__":
     import sys
