@@ -39,10 +39,8 @@ The unit tests require nosetests.
 
 TODO Items
 ----------
-- Resolution units are not used.
 - Allow users to provide a pre-allocated array when requesting data
 - Support multithreaded parallel requests
-- Support PUT
-- Fix format/mimetype strings
 - Both client and server try to avoid using lots of memory by "chunking" data onto the http stream. Is that necessary?  Does it help?  Does it hurt?
-- Current API specifies an image "size" for each dimension.  Original idea was for DVID coordinate system to be signed, with start/stop volume "extents" instead of a simple image shape.
+- Resolution units are not used.
+- Volume metainfo json is not validated against a schema
