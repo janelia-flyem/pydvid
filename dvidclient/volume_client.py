@@ -108,6 +108,7 @@ class VolumeClient(object):
                     # Uh-oh, we expected it to be empty.
                     raise Exception( "Received data was longer than expected by {} bytes.  (Expected only {} bytes.)"
                                      "".format( len(excess_data), len(numpy.getbuffer(vdata)) ) ) 
+        # Select the requested channels from the returned data.
         return vdata[start[0]:stop[0]]
 
     def modify_subvolume(self, start, stop, new_data):
