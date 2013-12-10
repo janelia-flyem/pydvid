@@ -59,7 +59,7 @@ class VolumeClient(object):
                                      "Got: {}".format( response_text ) )
 
     @classmethod
-    def query_dataset_info(cls, hostname):
+    def query_datasets_info(cls, hostname):
         """
         Query DVID for the list of datasets and the associated 
         nodes and data items within each node.
@@ -73,13 +73,13 @@ class VolumeClient(object):
                         "query datasets info", response.status, response.reason, response.read() )
                 
                 try:
-                    dataset_info = json.loads( response.read() )
+                    datasets_info = json.loads( response.read() )
                 except ValueError as ex:
                     raise Exception( "Couldn't parse the dataset info response as json:\n"
                                      "{}".format( ex.args ) )
                 
                 # TODO: Schema validation
-                return dataset_info
+                return datasets_info
 
     def __init__(self, hostname, uuid, data_name):
         """

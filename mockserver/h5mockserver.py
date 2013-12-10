@@ -7,12 +7,25 @@ The server can also be started up in stand-alone mode:
     $ cd mockserver
     $ PYTHONPATH=.. python h5mockserver.py my_hdf5_file.h5
 
-Internally, your hdf5 file must be a hierarchy, such that each 
-dvid data item is accessed via: `/datasets/dataset_name/uuid/dataset_name`,
-and also accessed via an internal SoftLink at the root level: /uuid/dataset_name
-Node groups should contain attributes 'parents' and 'children', which specify the layout of the DAG.
+Internally, your hdf5 file must be a hierarchy, with symlinks for easy access to uuids:
 
-Furthermore, each hdf5 dataset must:
+/datasets
+    /dataset_name1
+        /nodes
+            /abc123
+                /volumeA -> ../../volumes/volumeA
+                /volumeB -> ../../volumes/volumeB
+            /def456
+                /volumeA -> ../../volumes/volumeA
+                /volumeB -> ../../volumes/volumeB
+        /volumes
+            /volumeA
+            /volumeB
+/all_nodes
+    /abc123 -> /datasets/dataset_name1/nodes/abc123
+    /def456 -> /datasets/dataset_name1/nodes/def456
+
+Furthermore, each hdf5 volume must:
 - include a channel axis
 - have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
 - be in C-order, e.g. zyxc
@@ -27,6 +40,7 @@ Obviously, the aim here is not to implement the full DVID API.
 """
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import re
+import json
 
 import numpy
 import h5py
@@ -109,7 +123,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         # This is the table of REST commands we support, 
         #  with the corresponding handler function for each supported http method.
-        rest_cmds = { "^/api/node/{uuid}/{dataname}/schema$" :                  { "GET"  : self._do_get_volume_schema },
+        rest_cmds = { "^/api/datasets/info$" :                                  { "GET"  : self._do_get_datasets_info },
+                      "^/api/node/{uuid}/{dataname}/schema$" :                  { "GET"  : self._do_get_volume_schema },
                       "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :       { "POST" : self._do_create_volume },
                       "^/api/node/{uuid}/{dataname}/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
                                                                                   "POST" : self._do_modify_data }
@@ -133,19 +148,83 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # We couldn't find a command for the user's query.
         raise self.RequestError( 400, "Bad query syntax: {}".format( self.path ) )
 
+    
+    def _do_get_datasets_info(self):
+        """
+        Respond to the query for dataset info.
+        Note: For the purposes of this mock server, only a 
+              subset of the json fields are provided here.
+              Furthmore the "DAG" is just the alphabetized uuids.
+        
+        API Notes:  - Datasets should be a dict, not a list, and each one should have a name...right?
+                    - Parents and children should be lists, and if there is no parent/child at a node, it should be represented with [], not null
+        """
+        # Dataset info is determined by the layout/attributes of the server's hdf5 file.
+        # See the docstring above for details.
+        info = {}
+        datasets = info["Datasets"] = []
+        
+        h5file = self.server.h5_file
+        for dataset_index, (dataset_name, dataset_group) in enumerate(sorted(h5file['datasets'].items())):
+            uuids = sorted( dataset_group["nodes"].keys() ) 
+            datasets.append( {} )
+            dset_info = datasets[-1]
+            dset_info["Root"] = uuids[0]
+            dset_info["Nodes"] = {}
+            dset_info["DatasetID"] = dataset_index
+            for node_index, uuid in enumerate(uuids):
+                # Don't bother with most node info fields
+                dset_info["Nodes"][uuid] = { "GlobalID" : uuid }
+                
+                # Assign a single parent/child for each node,
+                # except first/last
+                if node_index == 0:
+                    dset_info["Nodes"][uuid]["Parents"] = [] # TODO: Fix DVID API
+                else:
+                    dset_info["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
 
+                if node_index == len(uuids)-1:
+                    dset_info["Nodes"][uuid]["Children"] = [] # TODO: Fix DVID API
+                else:
+                    dset_info["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
+            
+            datamap = dset_info["DataMap"] = {}
+            volumes_group = 'datasets/{dataset_name}/volumes'.format( **locals() )
+            for data_name, h5volume in sorted(h5file[volumes_group].items()):
+                datamap[data_name] = {}
+                datamap[data_name]["Name"] = data_name
+                # TODO: Other fields...
+        
+        json_text = json.dumps( info )
+        self.send_response(200)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
+            
+         
     def _do_create_volume(self, uuid, typename, dataname):
         """
         The http client wants to create a new volume.
         Create it.
         """
-        if uuid not in self.server.h5_file:
+        if uuid not in self.server.h5_file["all_nodes"]:
             raise self.RequestError( 404, "No such node with uuid {}".format( uuid ) )
         
-        dataset_path = uuid + '/' + dataname
-        if dataset_path in self.server.h5_file:
+        # Find the dataset that owns this node.
+        volume_path = None
+        for dataset_name, dataset_group in self.server.h5_file['datasets'].items():
+            for node_uuid, node_group in dataset_group['nodes'].items():
+                if node_uuid == uuid:
+                    volume_path = '/datasets/{dataset_name}/volumes/{dataname}'.format( **locals() )
+                    break
+
+        if volume_path is None:
+            raise self.RequestError( 409, "Cannot create.  Can't find node volumes dir in server hdf5 file." )
+        
+        if volume_path in self.server.h5_file:
             raise self.RequestError( 409, "Cannot create.  Volume {} already exists."
-                                     .format( dataset_path ) )
+                                     .format( volume_path ) )
 
         # Must read exact bytes.
         # Apparently rfile.read() just hangs.
@@ -164,7 +243,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                                           "REST typename was {}, but metainfo JSON implies typename {}"
                                           "".format( typename, expected_typename ) )
 
-        metainfo.create_empty_h5_dataset( self.server.h5_file, dataset_path )
+        # Create the new volume in the appropriate 'volumes' group,
+        #  and then link to it in the node group.
+        metainfo.create_empty_h5_dataset( self.server.h5_file, volume_path )
+        linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
+        self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
         self.server.h5_file.flush()
 
         self.send_response(204) # "No Content" (accepted)
@@ -243,7 +326,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         """
         Return the server's hdf5 dataset for the given uuid and data volume name.
         """
-        dataset_path = uuid + '/' + dataname
+        dataset_path = '/all_nodes/' + uuid + '/' + dataname
         try:
             return self.server.h5_file[dataset_path]
         except KeyError:

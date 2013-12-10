@@ -46,14 +46,23 @@ class TestVolumeClient(object):
         data = data.astype( numpy.uint32 )
 
         # Choose names
+        cls.dvid_dataset = "datasetA"
         cls.data_uuid = "abcde"
         cls.data_name = "indices_data"
-        dataset_name = cls.data_uuid + '/' + cls.data_name
+        cls.volume_location = "/datasets/{dvid_dataset}/volumes/{data_name}".format( **cls.__dict__ )
+        cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
 
         # Write to h5 file
-        with h5py.File( test_filepath, "w" ) as test_h5file:        
-            dset = test_h5file.create_dataset(dataset_name, data=data)
+        with h5py.File( test_filepath, "w" ) as test_h5file:
+            dset = test_h5file.create_dataset(cls.volume_location, data=data)
             dset.attrs["axistags"] = vigra.defaultAxistags("tzyxc").toJSON()
+            
+            test_h5file.create_group( cls.node_location )
+            link_location = cls.node_location + "/" + cls.data_name
+            test_h5file[link_location] = h5py.SoftLink(cls.volume_location)
+            
+            test_h5file.create_group("/all_nodes")
+            test_h5file["/all_nodes/" + cls.data_uuid] = h5py.SoftLink( cls.node_location )            
 
     @classmethod
     def _start_mockserver(cls, h5filepath, same_process=False, disable_server_logging=True):
@@ -79,6 +88,14 @@ class TestVolumeClient(object):
         server_proc.start()
         return server_proc
     
+    def test_query_datasets_info(self):
+        info = VolumeClient.query_datasets_info("localhost:8000")
+        assert info["Datasets"][0]["Root"] == "abcde"
+        assert info["Datasets"][0]["Nodes"]["abcde"]["Parents"] == []
+        assert info["Datasets"][0]["Nodes"]["abcde"]["Children"] == []
+        assert info["Datasets"][0]["DataMap"][self.data_name]["Name"] == self.data_name
+        
+    
     def test_create_volume(self):
         """
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
@@ -88,8 +105,9 @@ class TestVolumeClient(object):
         VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, metainfo )
         
         with h5py.File(self.test_filepath, 'r') as f:
-            assert volume_name in f[self.data_uuid], "Volume wasn't created"
-            assert MetaInfo.create_from_h5_dataset( f[self.data_uuid][volume_name] ) == metainfo,\
+            volumes_group = "/datasets/{dvid_dataset}/volumes".format( dvid_dataset=self.dvid_dataset )
+            assert volume_name in f[volumes_group], "Volume wasn't created: {}".format( volumes_group + "/" + volume_name )
+            assert MetaInfo.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metainfo,\
                 "New volume has the wrong metainfo"
 
 
@@ -100,7 +118,7 @@ class TestVolumeClient(object):
         self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, 
                                     self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
     
-    def _test_retrieve_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
+    def _test_retrieve_volume(self, hostname, h5filename, uuid, data_name, start, stop):
         """
         hostname: The dvid server host
         h5filename: The h5 file to compare against
@@ -109,11 +127,11 @@ class TestVolumeClient(object):
         start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
         """
         # Retrieve from server
-        dvid_vol = VolumeClient( hostname, uuid=h5group, data_name=h5dataset )
+        dvid_vol = VolumeClient( hostname, uuid, data_name )
         subvolume = dvid_vol.retrieve_subvolume( start, stop )
         
         # Compare to file
-        self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)
+        self._check_subvolume(h5filename, uuid, data_name, start, stop, subvolume)
 
     def test_push(self):
         """
@@ -131,7 +149,7 @@ class TestVolumeClient(object):
         self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, 
                                    self.data_name, start, stop, subvolume )
 
-    def _test_send_subvolume(self, hostname, h5filename, h5group, h5dataset, start, stop, subvolume):
+    def _test_send_subvolume(self, hostname, h5filename, uuid, data_name, start, stop, subvolume):
         """
         hostname: The dvid server host
         h5filename: The h5 file to compare against
@@ -141,13 +159,13 @@ class TestVolumeClient(object):
         subvolume: The data to send.  Must be of the correct shape for start,stop coordinates.
         """
         # Send to server
-        dvid_vol = VolumeClient( hostname, uuid=h5group, data_name=h5dataset )
+        dvid_vol = VolumeClient( hostname, uuid, data_name )
         dvid_vol.modify_subvolume(start, stop, subvolume)
         
         # Check file
-        self._check_subvolume(h5filename, h5group, h5dataset, start, stop, subvolume)        
+        self._check_subvolume(h5filename, uuid, data_name, start, stop, subvolume)        
 
-    def _check_subvolume(self, h5filename, h5group, h5dataset, start, stop, subvolume):
+    def _check_subvolume(self, h5filename, uuid, data_name, start, stop, subvolume):
         """
         Compare a given subvolume to an hdf5 dataset.  Assert if they don't match.
         """
@@ -155,7 +173,7 @@ class TestVolumeClient(object):
         slicing = [ slice(x,y) for x,y in zip(start, stop) ]
         slicing = tuple(reversed(slicing))
         with h5py.File(h5filename, 'r') as f:
-            expected_data = f[h5group][h5dataset][slicing]
+            expected_data = f["all_nodes"][uuid][data_name][slicing]
 
         # Compare.
         assert ( subvolume.view(numpy.ndarray) == expected_data.transpose() ).all(),\
