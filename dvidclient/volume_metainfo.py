@@ -12,15 +12,12 @@ class MetaInfo(_MetaInfo):
     @classmethod
     def create_from_json(cls, jsontext):
         """
-        Parse the given json text and return a MetaInfo namedtuple
+        Parse the given json text and return a MetaInfo namedtuple.
+        Raise a ValueError if the json can't be parsed.
         
         NOTE: By DVID convention, the axistags are returned assuming FORTRAN ORDER.
         """
-        try:
-            meta_dict = json.loads( jsontext )
-        except ValueError:
-            sys.stderr.write("Failed to parse response as json:\n{}\n".format( jsontext ))
-            raise
+        meta_dict = json.loads( jsontext )
         
         shape = []
         tags = vigra.AxisTags()
