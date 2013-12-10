@@ -26,6 +26,7 @@ Obviously, the aim here is not to implement the full DVID API.
   REST queries including the format parameter will result in error 400 (bad syntax)
 """
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+import re
 
 import numpy
 import h5py
@@ -41,7 +42,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     Supports the following DVID REST calls:
     
     Description info (a.k.a. metainfo):
-        GET  /api/node/<UUID>/<data name>/info
+        GET  /api/node/<UUID>/<data name>/schema
     
     Create volume:
         POST /api/dataset/<UUID>/new/<datatype name>/<data name>
@@ -58,10 +59,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             self.status_code = status_code
             self.message = message
     
-    def do_GET(self):
-        self._handle_request("GET")
-    def do_POST(self):
-        self._handle_request("POST")
+
+    # Forward all requests to the common entry point
+    def do_GET(self):  self._handle_request("GET")
+    def do_POST(self): self._handle_request("POST")
+
 
     def _handle_request(self, method):
         """
@@ -84,6 +86,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             
             raise # Now crash...
 
+
     def _execute_request(self, method):
         """
         Execute the current request.  Exceptions must be handled by the caller.
@@ -91,60 +94,55 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Support GET queries for dataset info or subvolume data.
         Also support POST for dataset subvolume data.
         """
-        params = self.path.split('/')
-        if params[0] == '':
-            params = params[1:]
+        # Parameter patterns
+        param_patterns = { 'uuid'     : r"[0-9a-fA-F]+",
+                           'shape'    : r"(\d+_)*\d+",
+                           'offset'   : r"(\d+_)*\d+", # (Same as shape)
+                           'dims'     : r"(\d_)*\d",
+                           'dataname' : r"\w+",
+                           'typename' : r"\w+" }
+        
+        # Surround each pattern with 'named group' regex syntax
+        named_param_patterns = {}
+        for name, pattern in param_patterns.items():
+            named_param_patterns[name] = "(?P<" + name + ">" + pattern + ")" 
 
-        if len(params) < 5:
-            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
+        # This is the table of REST commands we support, 
+        #  with the corresponding handler function for each supported http method.
+        rest_cmds = { "^/api/node/{uuid}/{dataname}/schema$" :                  { "GET"  : self._do_get_volume_schema },
+                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :       { "POST" : self._do_create_volume },
+                      "^/api/node/{uuid}/{dataname}/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
+                                                                                  "POST" : self._do_modify_data }
+                    }
 
-        uuid = params[2]
+        # Find the matching rest command and execute the handler.
+        for rest_cmd_format, cmd_methods in rest_cmds.items():
+            rst_cmd_pattern = rest_cmd_format.format( **named_param_patterns )
+            match = re.match( rst_cmd_pattern, self.path )
+            if match:
+                try:
+                    handler = cmd_methods[method]
+                except KeyError:
+                    raise self.RequestError( 405, "Unsupported method for query: {} {}"
+                                                  "".format( method, self.path ) )
+                else:
+                    # Execute the command, passing in the matched parameters
+                    handler( **match.groupdict() )
+                    return
 
-        # First check to see if the user is attempting to create a new volume.
-        if len(params) == 6 and method == "POST":
-            self._do_create_volume(params, uuid)
-            return
+        # We couldn't find a command for the user's query.
+        raise self.RequestError( 400, "Bad query syntax: {}".format( self.path ) )
 
-        data_name = params[3]
-        dataset_path = uuid + '/' + data_name
 
-        # Otherwise, the volume should already exist.
-        if dataset_path not in self.server.h5_file:
-            raise self.RequestError( 404, "Couldn't find dataset: {} in file {}"
-                                          "".format( dataset_path, self.server.h5_file.filename ) )
-
-        # For this mock server, we assume the data can be found inside our h5 file at /uuid/data_name
-        dataset = self.server.h5_file[dataset_path]
-
-        if len(params) == 5:
-            self._do_get_info(params, dataset)
-        elif len(params) == 7:
-            if method == "GET":
-                self._do_get_data(params, dataset)
-            elif method == "POST":
-                self._do_modify_data(params, dataset)
-            else:
-                raise self.RequestError( 405, "Unsupported method for query: {} {}"
-                                              "".format( method, self.path ) )
-        else:
-            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
-
-    def _do_create_volume(self, params, uuid):
+    def _do_create_volume(self, uuid, typename, dataname):
         """
         The http client wants to create a new volume.
         Create it.
         """
-        assert len(params) == 6
-        
-        if params[3] != "new":
-            raise self.RequestError(400, "Bad request syntax: {}".format( self.path ))
-        
         if uuid not in self.server.h5_file:
             raise self.RequestError( 404, "No such node with uuid {}".format( uuid ) )
         
-        data_name = params[5]
-        dataset_path = uuid + '/' + data_name
-        
+        dataset_path = uuid + '/' + dataname
         if dataset_path in self.server.h5_file:
             raise self.RequestError( 409, "Cannot create.  Volume {} already exists."
                                      .format( dataset_path ) )
@@ -160,12 +158,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                                           'Error parsing volume description: {}\n'
                                           'Invalid description text was:\n{}'
                                           ''.format( ex.args[0], metainfo_json ) )
-        rest_typename = params[4]
         expected_typename = metainfo.determine_dvid_typename()
-        if rest_typename != expected_typename:
+        if typename != expected_typename:
             raise self.RequestError( 400, "Cannot create volume.  "
                                           "REST typename was {}, but metainfo JSON implies typename {}"
-                                          "".format( rest_typename, expected_typename ) )
+                                          "".format( typename, expected_typename ) )
 
         metainfo.create_empty_h5_dataset( self.server.h5_file, dataset_path )
         self.server.h5_file.flush()
@@ -174,19 +171,12 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-length", "0" )
         self.end_headers()
 
-    def _do_get_info(self, params, dataset):
+
+    def _do_get_volume_schema(self, uuid, dataname):
         """
         Respond to a query for dataset info.
-        
-        params: The full list of REST parameters with the current query.
-                For example: ['api', 'node', 'abc123', 'grayscale_vol', 'info']
-        dataset: An h5py.Dataset object the user wants info for.
         """
-        assert len(params) == 5
-        cmd = params[4]
-        if cmd != 'schema':
-            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
-        
+        dataset = self._get_h5_dataset(uuid, dataname)
         metainfo = MetaInfo.create_from_h5_dataset(dataset)
         json_text = metainfo.format_to_json()
 
@@ -196,15 +186,15 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write( json_text )
 
-    def _do_get_data(self, params, dataset):
+
+    def _do_get_data(self, uuid, dataname, dims, shape, offset):
         """
         Respond to a query for volume data.
-
-        params: The full list of REST parameters with the current query.
-                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50']
-        dataset: An h5py.Dataset object to extract the data from.
+        
+        All parameters are strings from the REST string.
         """
-        roi_start, roi_stop = self._determine_request_roi( params, dataset )
+        dataset = self._get_h5_dataset(uuid, dataname)
+        roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
         slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
         
         # Reverse here because API uses fortran order, but data is stored in C-order
@@ -223,15 +213,15 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         codec.encode_from_vigra_array( self.wfile, v_array.transpose() )
     
-    def _do_modify_data(self, params, dataset):
+
+    def _do_modify_data(self, uuid, dataname, dims, shape, offset):
         """
         Respond to a POST request to modify a subvolume of data.
 
-        params: The full list of REST parameters with the current query.
-                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50']
-        dataset: An h5py.Dataset object to modify.
+        All parameters are strings from the REST string.
         """
-        roi_start, roi_stop = self._determine_request_roi( params, dataset )
+        dataset = self._get_h5_dataset(uuid, dataname)
+        roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
         # Prepend channel to make "full" roi
         full_roi_start = (0,) + roi_start
         full_roi_stop = (dataset.shape[-1],) + roi_stop
@@ -248,27 +238,32 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-length", 0 )
         self.end_headers()
     
-    def _determine_request_roi(self, params, dataset):
+
+    def _get_h5_dataset(self, uuid, dataname):
+        """
+        Return the server's hdf5 dataset for the given uuid and data volume name.
+        """
+        dataset_path = uuid + '/' + dataname
+        try:
+            return self.server.h5_file[dataset_path]
+        except KeyError:
+            raise self.RequestError( 404, "Couldn't find dataset: {} in file {}"
+                                          "".format( dataset_path, self.server.h5_file.filename ) )
+
+
+    def _determine_request_roi(self, h5_dataset, dims_str, roi_shape_str, roi_start_str):
         """
         Parse the given REST parameters to determine the request region of interest.
         
         Returns: Coordinates start, stop (in API order, without channel index)
-        
-        params: The full list of REST parameters with the current query.
-                For example: ['api', 'node', 'abc123', 'grayscale_vol', '10_20_30', '50_50_50']
-        dataset: An h5py.Dataset object, used for validation of the parsed roi.
-        """
-        assert len(params) == 7
-        if params[0] != 'api' or \
-           params[1] != 'node':
-            raise self.RequestError(400, "Bad query syntax: {}".format( self.path ))
-        
-        dims_str, roi_shape_str, roi_start_str = params[4:]
 
-        dataset_ndims = len(dataset.shape)
+        h5_dataset: The dataset the roi applies to (used for error checking only)
+        dims_str, roi_shape_str, roi_start_str: strings from a REST request.
+        """
+        dataset_ndims = len(h5_dataset.shape)
         expected_dims_str = "_".join( map(str, range( dataset_ndims-1 )) )
         if dims_str != expected_dims_str:
-            raise self.RequestError( 400, "For now, queries must include all dataset axes.  "
+            raise self.RequestError( 400, "For now, queries must include all data axes.  "
                                           "Your query requested dims: {}".format( dims_str ) )
         
         roi_start = tuple( int(x) for x in roi_start_str.split('_') )
