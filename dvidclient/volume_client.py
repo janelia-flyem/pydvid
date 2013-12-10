@@ -2,6 +2,7 @@ from httplib import HTTPConnection
 import threading
 import contextlib
 import StringIO
+import json
 
 import numpy
 
@@ -50,11 +51,35 @@ class VolumeClient(object):
     
             with contextlib.closing( connection.getresponse() ) as response:
                 if response.status != 204:
-                    raise VolumeClient.ErrorResponseException( "create new data", response.status, response.reason, response.read() )
+                    raise VolumeClient.ErrorResponseException( 
+                        "create new data", response.status, response.reason, response.read() )
                 response_text = response.read()
                 if response_text:
                     raise Exception( "Expected an empty response from the DVID server.  "
                                      "Got: {}".format( response_text ) )
+
+    @classmethod
+    def query_dataset_info(cls, hostname):
+        """
+        Query DVID for the list of datasets and the associated 
+        nodes and data items within each node.
+        """
+        with contextlib.closing( HTTPConnection(hostname) ) as connection:
+            rest_query = "/api/datasets/info"
+            connection.request( "GET", rest_query )
+            with contextlib.closing( connection.getresponse() ) as response:
+                if response.status != 200:
+                    raise VolumeClient.ErrorResponseException( 
+                        "query datasets info", response.status, response.reason, response.read() )
+                
+                try:
+                    dataset_info = json.loads( response.read() )
+                except ValueError as ex:
+                    raise Exception( "Couldn't parse the dataset info response as json:\n"
+                                     "{}".format( ex.args ) )
+                
+                # TODO: Schema validation
+                return dataset_info
 
     def __init__(self, hostname, uuid, data_name):
         """
@@ -73,7 +98,8 @@ class VolumeClient(object):
         
         response = connection.getresponse()
         if response.status != 200:
-            raise self.ErrorResponseException( "metainfo query", response.status, response.reason, response.read() )
+            raise self.ErrorResponseException( 
+                "metainfo query", response.status, response.reason, response.read() )
 
         self.metainfo = MetaInfo.create_from_json( response.read() )
         self._codec = VolumeCodec( self.metainfo )
@@ -92,7 +118,8 @@ class VolumeClient(object):
             self._connection.request( "GET", rest_query )
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != 200:
-                    raise self.ErrorResponseException( "subvolume query", response.status, response.reason, response.read() )
+                    raise self.ErrorResponseException( 
+                        "subvolume query", response.status, response.reason, response.read() )
                 
                 # "Full" roi shape includes channel axis and ALL channels
                 full_roi_shape = numpy.array(stop) - start
@@ -123,7 +150,8 @@ class VolumeClient(object):
             self._connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != 204:
-                    raise self.ErrorResponseException( "subvolume post", response.status, response.reason, response.read() )
+                    raise self.ErrorResponseException( 
+                        "subvolume post", response.status, response.reason, response.read() )
                 
                 # Something (either dvid or the httplib) gets upset if we don't read the full response.
                 response.read()
