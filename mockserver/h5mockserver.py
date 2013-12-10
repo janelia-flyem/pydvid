@@ -7,15 +7,20 @@ The server can also be started up in stand-alone mode:
     $ cd mockserver
     $ PYTHONPATH=.. python h5mockserver.py my_hdf5_file.h5
 
-Internally, your hdf5 file must be a two-level hierarchy, such that each dataset is accessed via: `/uuid/dataset_name`.
-Furthermore, each dataset:
-- Must include a channel axis
-- Must have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
-- Must be in C-order, e.g. zyxc
+Internally, your hdf5 file must be a hierarchy, such that each 
+dvid data item is accessed via: `/datasets/dataset_name/uuid/dataset_name`,
+and also accessed via an internal SoftLink at the root level: /uuid/dataset_name
+Node groups should contain attributes 'parents' and 'children', which specify the layout of the DAG.
+
+Furthermore, each hdf5 dataset must:
+- include a channel axis
+- have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
+- be in C-order, e.g. zyxc
 
 LIMITATIONS:
 Obviously, the aim here is not to implement the full DVID API.
-- The user's query MUST include all axes (i.e. the <dims> parameter must be something like 0_1_2, not 0_2).
+- The user's subvolume queries MUST include all axes 
+    (i.e. the <dims> parameter must be something like 0_1_2, not 0_2).
 - The <format> parameter is not supported.
   Data is always returned as binary volume buffer data.
   REST queries including the format parameter will result in error 400 (bad syntax)
