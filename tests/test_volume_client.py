@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import threading
 import multiprocessing
 
 import numpy
@@ -10,7 +9,7 @@ import h5py
 
 from dvidclient.volume_client import VolumeClient
 from dvidclient.volume_metainfo import MetaInfo
-from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
+from mockserver.h5mockserver import H5MockServer
 
 class TestVolumeClient(object):
     
@@ -75,18 +74,7 @@ class TestVolumeClient(object):
                       Otherwise, start the server in its own process (default).
         disable_server_logging: If true, disable the normal HttpServer logging of every request.
         """
-        def server_main():
-            server_address = ('', 8000)
-            server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
-            server.serve_forever()
-    
-        if same_process:
-            server_proc = threading.Thread( target=server_main )
-            server_proc.daemon = True
-        else:
-            server_proc = multiprocessing.Process( target=server_main )
-        server_proc.start()
-        return server_proc
+        return H5MockServer.start( h5filepath, "localhost", 8000, same_process, disable_server_logging )
     
     def test_query_datasets_info(self):
         info = VolumeClient.query_datasets_info("localhost:8000")

@@ -384,6 +384,35 @@ class H5MockServer(HTTPServer):
             self.h5_file = h5_file
             HTTPServer.serve_forever(self)
 
+    @classmethod
+    def start(cls, h5filepath, hostname, port, same_process=False, disable_server_logging=True):
+        """
+        Start the mock DVID server in a separate process or thread.
+        
+        h5filepath: The file to serve up.
+        same_process: If True, start the server in this process as a 
+                      separate thread (useful for debugging).
+                      Otherwise, start the server in its own process (default).
+        disable_server_logging: If true, disable the normal HttpServer logging of every request.
+        """
+        import threading
+        import multiprocessing
+
+        def server_main():
+            server_address = (hostname, port)
+            server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
+            server.serve_forever()
+    
+        if same_process:
+            server_thread = threading.Thread( target=server_main )
+            server_thread.daemon = True
+            server_thread.start()
+            return server_thread
+        else:
+            server_proc = multiprocessing.Process( target=server_main )
+            server_proc.start()
+            return server_proc
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 2:
