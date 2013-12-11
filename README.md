@@ -46,6 +46,14 @@ Client Usage
     tagged_data = vigra.taggedView( new_data, metainfo.axistags )
     cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
 
+DVID Contents Browser UI
+------------------------
+
+A simple widget for viewing the list of datasets and nodes in a DVID instance is provided.
+Requires PyQt4.  To see a demo of it in action, start up your dvid server run this:
+
+    $ python dvidclient/gui/contents_browser.py localhost:8000
+
 Run the tests
 -------------
 The unit tests require nosetests.
