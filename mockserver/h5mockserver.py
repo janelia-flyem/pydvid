@@ -406,6 +406,7 @@ class H5MockServer(HTTPServer):
         if same_process:
             server_thread = threading.Thread( target=server_main )
             server_thread.daemon = True
+            server_thread.terminate = lambda:None # Implement the Process interface for debugging convenience...
             server_thread.start()
             return server_thread
         else:

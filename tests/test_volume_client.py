@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import multiprocessing
 
 import numpy
 import vigra
@@ -23,16 +22,15 @@ class TestVolumeClient(object):
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc = cls._start_mockserver( cls.test_filepath, same_process=False )
+        cls.server_proc = cls._start_mockserver( cls.test_filepath, same_process=True )
 
     @classmethod
     def teardownClass(cls):
         """
         Override.  Called by nosetests.
         """
-        #shutil.rmtree(cls._tmp_dir)
-        if isinstance( cls.server_proc, multiprocessing.Process ):
-            cls.server_proc.terminate()
+        shutil.rmtree(cls._tmp_dir)
+        cls.server_proc.terminate()
 
     @classmethod
     def _generate_testdata_h5(cls, test_filepath):
