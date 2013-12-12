@@ -9,7 +9,7 @@ import h5py
 
 from dvidclient.volume_client import VolumeClient
 from dvidclient.volume_metainfo import MetaInfo
-from mockserver.h5mockserver import H5MockServer
+from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVolumeClient(object):
     
@@ -30,7 +30,7 @@ class TestVolumeClient(object):
         """
         Override.  Called by nosetests.
         """
-        shutil.rmtree(cls._tmp_dir)
+        #shutil.rmtree(cls._tmp_dir)
         if isinstance( cls.server_proc, multiprocessing.Process ):
             cls.server_proc.terminate()
 
@@ -43,6 +43,7 @@ class TestVolumeClient(object):
         data = numpy.indices( (10, 100, 200, 3) )
         assert data.shape == (4, 10, 100, 200, 3)
         data = data.astype( numpy.uint32 )
+        data = vigra.taggedView( data, 'tzyxc' )
 
         # Choose names
         cls.dvid_dataset = "datasetA"
@@ -52,16 +53,9 @@ class TestVolumeClient(object):
         cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
 
         # Write to h5 file
-        with h5py.File( test_filepath, "w" ) as test_h5file:
-            dset = test_h5file.create_dataset(cls.volume_location, data=data)
-            dset.attrs["axistags"] = vigra.defaultAxistags("tzyxc").toJSON()
-            
-            test_h5file.create_group( cls.node_location )
-            link_location = cls.node_location + "/" + cls.data_name
-            test_h5file[link_location] = h5py.SoftLink(cls.volume_location)
-            
-            test_h5file.create_group("/all_nodes")
-            test_h5file["/all_nodes/" + cls.data_uuid] = h5py.SoftLink( cls.node_location )            
+        with H5MockServerDataFile( test_filepath ) as test_h5file:
+            test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
+            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data )
 
     @classmethod
     def _start_mockserver(cls, h5filepath, same_process=False, disable_server_logging=True):
