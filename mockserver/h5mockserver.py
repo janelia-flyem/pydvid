@@ -317,6 +317,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         # Reverse here because API uses fortran order, but data is stored in C-order
         dataset[tuple(reversed(slicing))] = v_array.transpose()
+        self.server.h5_file.flush()
+
         self.send_response(204) # "No Content" (accepted)
         self.send_header("Content-length", 0 )
         self.end_headers()
