@@ -153,7 +153,7 @@ class ContentsBrowser(QDialog):
 
     def _populate_node_list(self, dataset_index):
         """
-        Replace the contentst of the node list widget 
+        Replace the contents of the node list widget 
         to show all the nodes for the currently selected dataset.
         """
         self._node_listwidget.clear()
