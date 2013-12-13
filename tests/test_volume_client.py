@@ -55,6 +55,7 @@ class TestVolumeClient(object):
             test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
             test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data )
 
+
     @classmethod
     def _start_mockserver(cls, h5filepath, same_process=False, disable_server_logging=True):
         """
@@ -66,7 +67,7 @@ class TestVolumeClient(object):
                       Otherwise, start the server in its own process (default).
         disable_server_logging: If true, disable the normal HttpServer logging of every request.
         """
-        return H5MockServer.start( h5filepath, "localhost", 8000, same_process, disable_server_logging )
+        return H5MockServer.create_and_start( h5filepath, "localhost", 8000, same_process, disable_server_logging )
     
     def test_query_datasets_info(self):
         info = VolumeClient.query_datasets_info("localhost:8000")

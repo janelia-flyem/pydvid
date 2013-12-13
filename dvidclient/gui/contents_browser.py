@@ -2,7 +2,7 @@ import collections
 
 from PyQt4.QtGui import QDialog, QVBoxLayout, QGroupBox, QTreeWidget, \
                         QTreeWidgetItem, QSizePolicy, QListWidget, QListWidgetItem, \
-                        QDialogButtonBox, QLineEdit, QLabel
+                        QDialogButtonBox, QLineEdit, QLabel, QMessageBox
 from PyQt4.QtCore import Qt, QStringList, QSize
 
 from dvidclient.volume_client import VolumeClient
@@ -17,6 +17,8 @@ class ContentsBrowser(QDialog):
     """
     def __init__(self, hostname, mode='select_existing', parent=None):
         """
+        Constructor.  May raise socket.error if host can't be found.
+        
         hostname: The dvid server hostname, e.g. "localhost:8000"
         mode: Either 'select_existing' or 'specify_new'
         parent: The parent widget.
@@ -31,7 +33,7 @@ class ContentsBrowser(QDialog):
         self._init_layout()
         
         # Query the server
-        self._datasets_info = VolumeClient.query_datasets_info(hostname)        
+        self._datasets_info = VolumeClient.query_datasets_info(hostname)
         self._populate_datasets_tree()
 
     VolumeSelection = collections.namedtuple( "VolumeSelection", "dataset_index data_name node_uuid" )
@@ -234,11 +236,11 @@ if __name__ == "__main__":
     if parsed_args.mock_server_hdf5:
         from mockserver.h5mockserver import H5MockServer
         hostname, port = parsed_args.hostname.split(":")
-        server_proc = H5MockServer.start( parsed_args.mock_server_hdf5,
-                                          hostname,
-                                          int(port),
-                                          same_process=False,
-                                          disable_server_logging=False )
+        server_proc = H5MockServer.create_and_start( parsed_args.mock_server_hdf5,
+                                                     hostname,
+                                                     int(port),
+                                                     same_process=False,
+                                                     disable_server_logging=False )
     
     app = QApplication([])
     browser = ContentsBrowser(parsed_args.hostname, parsed_args.mode)

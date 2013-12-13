@@ -396,7 +396,7 @@ class H5MockServer(HTTPServer):
             HTTPServer.serve_forever(self)
 
     @classmethod
-    def start(cls, h5filepath, hostname, port, same_process=False, disable_server_logging=True):
+    def create_and_start(cls, h5filepath, hostname, port, same_process=False, disable_server_logging=True):
         """
         Start the mock DVID server in a separate process or thread.
         
@@ -430,6 +430,7 @@ class H5MockServerDataFile(object):
     Convenience class for generating an hdf5 file that 
     can be served up by the H5MockServer.
     See file docstring above for format details.
+    In the generated file, all nodes in a dataset contain the same volumes.
     """
     def __init__(self, filepath):
         self._f = h5py.File( filepath )
@@ -437,27 +438,12 @@ class H5MockServerDataFile(object):
             self._f.create_group('datasets')
         if 'all_nodes' not in self._f:
             self._f.create_group('all_nodes')
-        
+
     def add_volume(self, dataset_name, volume_name, volume):
         assert isinstance( volume, vigra.VigraArray )
         assert volume.axistags[-1].key == 'c'
 
-        # Make dataset if necessary
-        dataset_path = '/datasets/' + dataset_name
-        if dataset_path not in self._f:
-            self._f.create_group( dataset_path )
-        
-        # Make volumes group if necessary
-        dataset_volumes_path = dataset_path + '/volumes'
-        if dataset_volumes_path not in self._f:
-            self._f.create_group( dataset_volumes_path )
-        volumes_group = self._f[dataset_volumes_path]
-
-        # Make nodes group if necessary        
-        dataset_nodes_path = dataset_path + '/nodes'
-        if dataset_nodes_path not in self._f:
-            self._f.create_group( dataset_nodes_path )
-        nodes_group = self._f[dataset_nodes_path]
+        volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
 
         # Save the volume
         volume_dset = volumes_group.create_dataset( volume_name, data=volume )
@@ -465,9 +451,22 @@ class H5MockServerDataFile(object):
         
         # Add a link to this volume in every node
         for node in nodes_group.values():
-            node[volume_name] = h5py.SoftLink( dataset_volumes_path + '/' + volume_name )
+            node[volume_name] = h5py.SoftLink( volumes_group.name + '/' + volume_name )
     
     def add_node(self, dataset_name, node_uuid):
+        volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
+
+        # Create the node
+        node = nodes_group.create_group( node_uuid )
+        
+        # Add the node to the global list, too
+        self._f['/all_nodes'][node_uuid] = h5py.SoftLink( nodes_group.name + '/' + node_uuid )
+        
+        # In this node, add a link to each volume of its dataset.
+        for volume_name in volumes_group.keys():
+            node[volume_name] = h5py.SoftLink( volumes_group.name + '/' + volume_name )
+
+    def _get_dataset_groups(self, dataset_name):
         # Make dataset if necessary
         dataset_path = '/datasets/' + dataset_name
         if dataset_path not in self._f:
@@ -484,16 +483,8 @@ class H5MockServerDataFile(object):
         if dataset_nodes_path not in self._f:
             self._f.create_group( dataset_nodes_path )
         nodes_group = self._f[dataset_nodes_path]
-        
-        # Create the node
-        node = nodes_group.create_group( node_uuid )
-        
-        # Add the node to the global list, too
-        self._f['/all_nodes'][node_uuid] = h5py.SoftLink( dataset_nodes_path + '/' + node_uuid )
-        
-        # In this node, add a link to each volume of its dataset.
-        for volume_name in volumes_group.keys():
-            node[volume_name] = h5py.SoftLink( dataset_volumes_path + '/' + volume_name )
+
+        return volumes_group, nodes_group
 
     def close(self):
         self._f.close()

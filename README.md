@@ -59,12 +59,30 @@ It serves up HDF5 datasets over http using the [DVID REST API][].
 
 [DVID REST API]: http://godoc.org/github.com/janelia-flyem/dvid/datatype/voxels#pkg-constants
 
-The server can also be started up in stand-alone mode:
+The mock server pulls its data from an hdf5 file with a special structure.
+The `H5MockServerDataFile` utility class can be used to generate the file:
+
+```python
+import numpy, vigra
+from mockserver.h5mockserver import H5MockServerDataFile
+
+# Generate a volume to store.
+data = numpy.random.randint(0,256, (100,200,300,1))
+data_view = vigra.taggedView( data, 'zyxc' ).astype( numpy.uint8 )
+
+# Create special server datafile with one dataset, with one node.
+# Then add our data volume to it.
+with H5MockServerDataFile( 'mock_storage.h5' ) as server_datafile:
+    server_datafile.add_node( 'my_dataset', 'abc123' )
+    server_datafile.add_volume( 'my_dataset', 'my_volume', data_view )
+```
+
+Once you have a datafile, the server can be started from the command line:
 
     $ cd mockserver
-    $ PYTHONPATH=.. python h5mockserver.py my_hdf5_file.h5
+    $ PYTHONPATH=.. python h5mockserver.py mock_storage.h5
 
-Internally, your hdf5 file must conform to a special structure.  See [`h5mockserver.py`][] for details.
+See [`h5mockserver.py`][] the datafile format details.
 
 [`h5mockserver.py`]: /mockserver/h5mockserver.py
 
