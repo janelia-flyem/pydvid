@@ -1,9 +1,12 @@
+import socket
+import httplib
 import collections
 
-from PyQt4.QtGui import QDialog, QVBoxLayout, QGroupBox, QTreeWidget, \
+from PyQt4.QtGui import QPushButton, QDialog, QVBoxLayout, QGroupBox, QTreeWidget, \
                         QTreeWidgetItem, QSizePolicy, QListWidget, QListWidgetItem, \
-                        QDialogButtonBox, QLineEdit, QLabel, QMessageBox
-from PyQt4.QtCore import Qt, QStringList, QSize
+                        QDialogButtonBox, QLineEdit, QLabel, QComboBox, QMessageBox, \
+                        QHBoxLayout
+from PyQt4.QtCore import Qt, QStringList, QSize, QEvent
 
 from dvidclient.volume_client import VolumeClient
 
@@ -15,28 +18,25 @@ class ContentsBrowser(QDialog):
     If the dialog is constructed with mode='specify_new', then the user is asked to provide a new data name, 
     and choose the dataset and node to which it will belong. 
     """
-    def __init__(self, hostname, mode='select_existing', parent=None):
+    def __init__(self, suggested_hostnames, mode='select_existing', parent=None):
         """
-        Constructor.  May raise socket.error if host can't be found.
+        Constructor.
         
-        hostname: The dvid server hostname, e.g. "localhost:8000"
+        suggested_hostnames: A list of hostnames to suggest to the user, e.g. ["localhost:8000"]
         mode: Either 'select_existing' or 'specify_new'
         parent: The parent widget.
         """
         super( ContentsBrowser, self ).__init__(parent)
-        self._current_dset = None
-        self._hostname = hostname
+        self._suggested_hostnames = suggested_hostnames
         self._mode = mode
+        self._current_dset = None
+        self._datasets_info = None
+        self._hostname = None
         
         # Create the UI
-        self.setWindowTitle( self._hostname )
         self._init_layout()
-        
-        # Query the server
-        self._datasets_info = VolumeClient.query_datasets_info(hostname)
-        self._populate_datasets_tree()
 
-    VolumeSelection = collections.namedtuple( "VolumeSelection", "dataset_index data_name node_uuid" )
+    VolumeSelection = collections.namedtuple( "VolumeSelection", "hostname dataset_index data_name node_uuid" )
     def get_selection(self):
         """
         Get the user's current (or final) selection.
@@ -48,18 +48,35 @@ class ContentsBrowser(QDialog):
         if self._mode == "specify_new":
             data_name = str( self._new_data_edit.text() )
         
-        return ContentsBrowser.VolumeSelection(dset_index, data_name, node_uuid)
+        return ContentsBrowser.VolumeSelection(self._hostname, dset_index, data_name, node_uuid)
 
     def _init_layout(self):
         """
         Create the GUI widgets (but leave them empty).
         """
+        hostname_combobox = QComboBox(parent=self)
+        self._hostname_combobox = hostname_combobox
+        hostname_combobox.setEditable(True)
+        hostname_combobox.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Maximum )
+        hostname_combobox.installEventFilter(self)
+        for hostname in self._suggested_hostnames:
+            hostname_combobox.addItem( hostname )
+
+        self._connect_button = QPushButton("Connect", parent=self, clicked=self._handle_new_hostname)
+
+        hostname_layout = QHBoxLayout()
+        hostname_layout.addWidget( hostname_combobox )
+        hostname_layout.addWidget( self._connect_button )
+
+        hostname_groupbox = QGroupBox("DVID Host", parent=self)
+        hostname_groupbox.setLayout( hostname_layout )
+        
         data_treewidget = QTreeWidget(parent=self)
         data_treewidget.setHeaderLabels( ["Data"] ) # TODO: Add type, shape, axes, etc.
         data_treewidget.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Preferred )
         data_treewidget.itemSelectionChanged.connect( self._handle_data_selection )
 
-        data_layout = QVBoxLayout(self)
+        data_layout = QVBoxLayout()
         data_layout.addWidget( data_treewidget )
         data_groupbox = QGroupBox("Data Volumes", parent=self)
         data_groupbox.setLayout( data_layout )
@@ -68,7 +85,7 @@ class ContentsBrowser(QDialog):
         node_listwidget.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Preferred )
         node_listwidget.itemSelectionChanged.connect( self._update_display )
 
-        node_layout = QVBoxLayout(self)
+        node_layout = QVBoxLayout()
         node_layout.addWidget( node_listwidget )
         node_groupbox = QGroupBox("Nodes", parent=self)
         node_groupbox.setLayout( node_layout )
@@ -78,7 +95,7 @@ class ContentsBrowser(QDialog):
         full_url_label = QLabel(parent=self)
         full_url_label.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Maximum )
 
-        new_data_layout = QVBoxLayout(self)
+        new_data_layout = QVBoxLayout()
         new_data_layout.addWidget( new_data_edit )
         new_data_groupbox = QGroupBox("New Data Volume", parent=self)
         new_data_groupbox.setLayout( new_data_layout )
@@ -89,7 +106,8 @@ class ContentsBrowser(QDialog):
         buttonbox.accepted.connect( self.accept )
         buttonbox.rejected.connect( self.reject )
 
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
+        layout.addWidget( hostname_groupbox )
         layout.addWidget( data_groupbox )
         layout.addWidget( node_groupbox )
         if self._mode == "specify_new":
@@ -99,8 +117,17 @@ class ContentsBrowser(QDialog):
         layout.addWidget( full_url_label )
         layout.addWidget( buttonbox )
         self.setLayout(layout)
+        self.setWindowTitle( "Select DVID Volume" )
+
+        # Initially disabled
+        data_groupbox.setEnabled(False)
+        node_groupbox.setEnabled(False)
+        new_data_groupbox.setEnabled(False)
 
         # Save instance members
+        self._data_groupbox = data_groupbox
+        self._node_groupbox = node_groupbox
+        self._new_data_groupbox = new_data_groupbox
         self._data_treewidget = data_treewidget
         self._node_listwidget = node_listwidget
         self._new_data_edit = new_data_edit
@@ -109,11 +136,54 @@ class ContentsBrowser(QDialog):
 
     def sizeHint(self):
         return QSize(700, 500)
+    
+    def eventFilter(self, watched, event):
+        if watched == self._hostname_combobox \
+        and event.type() == QEvent.KeyPress \
+        and ( event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter):
+            self._connect_button.click()
+            return True
+        return False
+
+    def _handle_new_hostname(self):
+        new_hostname = str( self._hostname_combobox.currentText() )
+        if '://' in new_hostname:
+            new_hostname = new_hostname.split('://')[1] 
+
+        error_msg = None
+        self._datasets_info = None
+        self._current_dset = None
+        self._hostname = None
+        try:
+            # Query the server
+            self._datasets_info = VolumeClient.query_datasets_info(new_hostname)
+            self._hostname = new_hostname
+        except socket.error as ex:
+            error_msg = "Socket Error: {} (Error {})".format( ex.args[1], ex.args[0] )
+        except httplib.HTTPException as ex:
+            error_msg = "HTTP Error: {}".format( ex.args[0] )
+
+        if error_msg:
+            QMessageBox.critical(self, "Connection Error", error_msg)
+            self._populate_datasets_tree()
+            self._populate_node_list(-1)
+
+        enable_contents = self._datasets_info is not None
+        self._data_groupbox.setEnabled(enable_contents)
+        self._node_groupbox.setEnabled(enable_contents)
+        self._new_data_groupbox.setEnabled(enable_contents)
+
+        self._populate_datasets_tree()
 
     def _populate_datasets_tree(self):
         """
         Initialize the tree widget of datasets and volumes.
         """
+        self._data_treewidget.clear()
+        
+        if self._datasets_info is None:
+            return
+        
         for dset_info in self._datasets_info["Datasets"]:
             dset_index = dset_info["DatasetID"]
             dset_name = str(dset_index) # FIXME when API is fixed
@@ -143,7 +213,10 @@ class ContentsBrowser(QDialog):
         """
         When the user clicks a new data item, respond by updating the node list.
         """
-        item = self._data_treewidget.selectedItems()[0]
+        selected_items = self._data_treewidget.selectedItems()
+        if not selected_items:
+            return None
+        item = selected_items[0]
         item_data = item.data(0, Qt.UserRole).toPyObject()
         if not item_data:
             return
@@ -159,6 +232,10 @@ class ContentsBrowser(QDialog):
         to show all the nodes for the currently selected dataset.
         """
         self._node_listwidget.clear()
+        
+        if self._datasets_info is None:
+            return
+        
         # For now, we simply show the nodes in sorted order, without respect to dag order
         all_uuids = sorted( self._datasets_info["Datasets"][dataset_index]["Nodes"].keys() )
         for node_uuid in all_uuids:
@@ -181,7 +258,10 @@ class ContentsBrowser(QDialog):
         return str( node_item_data.toString() )
         
     def _get_selected_data(self):
-        selected_data_item = self._data_treewidget.selectedItems()[0]
+        selected_items = self._data_treewidget.selectedItems()
+        if not selected_items:
+            return None, None
+        selected_data_item = selected_items[0]
         data_item_data = selected_data_item.data(0, Qt.UserRole).toPyObject()
         if selected_data_item:
             dset_index, data_name = data_item_data
@@ -193,7 +273,7 @@ class ContentsBrowser(QDialog):
         """
         Update the path label to reflect the user's currently selected uuid and new volume name.
         """
-        dset_index, dataname, node_uuid = self.get_selection()
+        hostname, dset_index, dataname, node_uuid = self.get_selection()
         full_path = "http://{hostname}/api/node/{uuid}/{dataname}"\
                     "".format( hostname=self._hostname, uuid=node_uuid, dataname=dataname )
         self._full_url_label.setText( full_path )
@@ -243,7 +323,7 @@ if __name__ == "__main__":
                                                      disable_server_logging=False )
     
     app = QApplication([])
-    browser = ContentsBrowser(parsed_args.hostname, parsed_args.mode)
+    browser = ContentsBrowser([parsed_args.hostname], parsed_args.mode)
 
     try:
         if browser.exec_() == QDialog.Accepted:
