@@ -53,20 +53,7 @@ from dvidclient.volume_codec import VolumeCodec
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
     The request handler for the H5MockServer.
-    
-    Supports the following DVID REST calls:
-    
-    Description info (a.k.a. metainfo):
-        GET  /api/node/<UUID>/<data name>/schema
-    
-    Create volume:
-        POST /api/dataset/<UUID>/new/<datatype name>/<data name>
-    
-    Retrieve subvolume:
-        GET  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
-    
-    Modify subvolume:
-        POST  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>
+    Implements a subset of the DVID REST API for nd-data over http.
     """
 
     class RequestError( Exception ):
@@ -95,7 +82,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             
             # Write exception traceback to the response body as an html comment.
             import traceback
-            self.wfile.write("<!--\n")
+            self.wfile.write("<!-- Server Exception Traceback:\n")
             traceback.print_exc(file=self.wfile)
             self.wfile.write("\n-->")
             self.wfile.flush()
@@ -123,8 +110,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         for name, pattern in param_patterns.items():
             named_param_patterns[name] = "(?P<" + name + ">" + pattern + ")" 
 
-        # This is the table of REST commands we support, 
-        #  with the corresponding handler function for each supported http method.
+        # Supported REST command formats -> methods and handlers
         rest_cmds = { "^/api/datasets/info$" :                                  { "GET"  : self._do_get_datasets_info },
                       "^/api/node/{uuid}/{dataname}/schema$" :                  { "GET"  : self._do_get_volume_schema },
                       "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :       { "POST" : self._do_create_volume },
@@ -159,8 +145,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
               subset of the json fields are provided here.
               Furthmore the "DAG" is just the alphabetized uuids.
         
-        API Notes:  - Datasets should be a dict, not a list, and each one should have a name...right?
-                    - Parents and children should be lists, and if there is no parent/child at a node, it should be represented with [], not null
+        API Notes:  - Parents and children should be lists, and if there is no parent/child at a node, it should be represented with [], not null
         """
         # Dataset info is determined by the layout/attributes of the server's hdf5 file.
         # See the docstring above for details.
@@ -175,6 +160,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             dset_info["Root"] = uuids[0]
             dset_info["Nodes"] = {}
             dset_info["DatasetID"] = dataset_index
+            dset_info["Alias"] = dataset_name
             for node_index, uuid in enumerate(uuids):
                 # Don't bother with most node info fields
                 dset_info["Nodes"][uuid] = { "GlobalID" : uuid }
