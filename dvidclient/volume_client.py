@@ -1,3 +1,4 @@
+import httplib
 from httplib import HTTPConnection
 import threading
 import contextlib
@@ -18,7 +19,6 @@ class VolumeClient(object):
     An instance of VolumeClient is capable of retrieving data from only one remote data volume.
     To retrieve data from multiple remote volumes, instantiate multiple VolumeClient objects.
     """
-    
     class ErrorResponseException( Exception ):
         def __init__(self, attempted_action, status_code, reason, response_body):
             self.attempted_action = attempted_action
@@ -29,7 +29,7 @@ class VolumeClient(object):
         def __str__(self):
             caption = 'While attempting "{}" DVID returned an error: {}, "{}"\n'\
                       ''.format( self.attempted_action, self.status_code, self.reason )
-            if self.status_code == 500:
+            if self.status_code == httplib.INTERNAL_SERVER_ERROR:
                 caption += "Server response body:\n"
                 caption += self.response_body
             return caption
@@ -50,7 +50,7 @@ class VolumeClient(object):
             connection.request( "POST", rest_query, body=metainfo_json, headers=headers )
     
             with contextlib.closing( connection.getresponse() ) as response:
-                if response.status != 204:
+                if response.status != httplib.NO_CONTENT:
                     raise VolumeClient.ErrorResponseException( 
                         "create new data", response.status, response.reason, response.read() )
                 response_text = response.read()
@@ -68,7 +68,7 @@ class VolumeClient(object):
             rest_query = "/api/datasets/info"
             connection.request( "GET", rest_query )
             with contextlib.closing( connection.getresponse() ) as response:
-                if response.status != 200:
+                if response.status != httplib.OK:
                     raise VolumeClient.ErrorResponseException( 
                         "query datasets info", response.status, response.reason, response.read() )
                 
@@ -97,7 +97,7 @@ class VolumeClient(object):
         connection.request( "GET", rest_query )
         
         response = connection.getresponse()
-        if response.status != 200:
+        if response.status != httplib.OK:
             raise self.ErrorResponseException( 
                 "metainfo query", response.status, response.reason, response.read() )
 
@@ -117,7 +117,7 @@ class VolumeClient(object):
         with self._lock:
             self._connection.request( "GET", rest_query )
             with contextlib.closing( self._connection.getresponse() ) as response:
-                if response.status != 200:
+                if response.status != httplib.OK:
                     raise self.ErrorResponseException( 
                         "subvolume query", response.status, response.reason, response.read() )
                 
@@ -149,7 +149,7 @@ class VolumeClient(object):
             headers = { "Content-Type" : VolumeCodec.VOLUME_MIMETYPE }
             self._connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
             with contextlib.closing( self._connection.getresponse() ) as response:
-                if response.status != 204:
+                if response.status != httplib.NO_CONTENT:
                     raise self.ErrorResponseException( 
                         "subvolume post", response.status, response.reason, response.read() )
                 

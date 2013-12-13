@@ -38,9 +38,10 @@ Obviously, the aim here is not to implement the full DVID API.
   Data is always returned as binary volume buffer data.
   REST queries including the format parameter will result in error 400 (bad syntax)
 """
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import re
 import json
+import httplib
+from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 import numpy
 import h5py
@@ -89,7 +90,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         except H5CutoutRequestHandler.RequestError as ex:
             self.send_error( ex.status_code, ex.message )
         except Exception as ex:
-            self.send_error( 500, "Server Error: See response body for traceback.  Crashing now..." )
+            self.send_error( httplib.INTERNAL_SERVER_ERROR, 
+                             "Server Error: See response body for traceback.  Crashing now..." )
             
             # Write exception traceback to the response body as an html comment.
             import traceback
@@ -138,15 +140,16 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                 try:
                     handler = cmd_methods[method]
                 except KeyError:
-                    raise self.RequestError( 405, "Unsupported method for query: {} {}"
-                                                  "".format( method, self.path ) )
+                    raise self.RequestError( httplib.METHOD_NOT_ALLOWED,
+                                             "Unsupported method for query: {} {}"
+                                             "".format( method, self.path ) )
                 else:
                     # Execute the command, passing in the matched parameters
                     handler( **match.groupdict() )
                     return
 
         # We couldn't find a command for the user's query.
-        raise self.RequestError( 400, "Bad query syntax: {}".format( self.path ) )
+        raise self.RequestError( httplib.BAD_REQUEST, "Bad query syntax: {}".format( self.path ) )
 
     
     def _do_get_datasets_info(self):
@@ -196,7 +199,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                 # TODO: Other fields...
         
         json_text = json.dumps( info )
-        self.send_response(200)
+        self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
         self.send_header("Content-length", str(len(json_text)))
         self.end_headers()
@@ -209,7 +212,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Create it.
         """
         if uuid not in self.server.h5_file["all_nodes"]:
-            raise self.RequestError( 404, "No such node with uuid {}".format( uuid ) )
+            raise self.RequestError( httplib.NOT_FOUND, "No such node with uuid {}".format( uuid ) )
         
         # Find the dataset that owns this node.
         volume_path = None
@@ -220,11 +223,12 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                     break
 
         if volume_path is None:
-            raise self.RequestError( 409, "Cannot create.  Can't find node volumes dir in server hdf5 file." )
+            raise self.RequestError( httplib.NOT_FOUND,
+                                     "Cannot create.  Can't find node volumes dir in server hdf5 file." )
         
         if volume_path in self.server.h5_file:
-            raise self.RequestError( 409, "Cannot create.  Volume {} already exists."
-                                     .format( volume_path ) )
+            raise self.RequestError( httplib.CONFLICT,
+                                     "Cannot create.  Volume {} already exists.".format( volume_path ) )
 
         # Must read exact bytes.
         # Apparently rfile.read() just hangs.
@@ -233,15 +237,16 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         try:
             metainfo = MetaInfo.create_from_json( metainfo_json )
         except ValueError as ex:
-            raise self.RequestError( 400, 'Can\'t create volume.  '
-                                          'Error parsing volume description: {}\n'
-                                          'Invalid description text was:\n{}'
-                                          ''.format( ex.args[0], metainfo_json ) )
+            raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
+                                     'Error parsing volume description: {}\n'
+                                     'Invalid description text was:\n{}'
+                                     ''.format( ex.args[0], metainfo_json ) )
         expected_typename = metainfo.determine_dvid_typename()
         if typename != expected_typename:
-            raise self.RequestError( 400, "Cannot create volume.  "
-                                          "REST typename was {}, but metainfo JSON implies typename {}"
-                                          "".format( typename, expected_typename ) )
+            raise self.RequestError( httplib.BAD_REQUEST,
+                                     "Cannot create volume.  "
+                                     "REST typename was {}, but metainfo JSON implies typename {}"
+                                     "".format( typename, expected_typename ) )
 
         # Create the new volume in the appropriate 'volumes' group,
         #  and then link to it in the node group.
@@ -250,7 +255,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
         self.server.h5_file.flush()
 
-        self.send_response(204) # "No Content" (accepted)
+        self.send_response(httplib.NO_CONTENT)
         self.send_header("Content-length", "0" )
         self.end_headers()
 
@@ -263,7 +268,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         metainfo = MetaInfo.create_from_h5_dataset(dataset)
         json_text = metainfo.format_to_json()
 
-        self.send_response(200)
+        self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
         self.send_header("Content-length", str(len(json_text)))
         self.end_headers()
@@ -289,7 +294,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         codec = VolumeCodec( metainfo )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
-        self.send_response(200)
+        self.send_response(httplib.OK)
         self.send_header("Content-type", VolumeCodec.VOLUME_MIMETYPE)
         self.send_header("Content-length", str(buffer_len) )
         self.end_headers()
@@ -319,7 +324,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         dataset[tuple(reversed(slicing))] = v_array.transpose()
         self.server.h5_file.flush()
 
-        self.send_response(204) # "No Content" (accepted)
+        self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
         self.send_header("Content-length", 0 )
         self.end_headers()
     
@@ -332,8 +337,9 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         try:
             return self.server.h5_file[dataset_path]
         except KeyError:
-            raise self.RequestError( 404, "Couldn't find dataset: {} in file {}"
-                                          "".format( dataset_path, self.server.h5_file.filename ) )
+            raise self.RequestError( httplib.NOT_FOUND,
+                                     "Couldn't find dataset: {} in file {}"
+                                     "".format( dataset_path, self.server.h5_file.filename ) )
 
 
     def _determine_request_roi(self, h5_dataset, dims_str, roi_shape_str, roi_start_str):
@@ -348,18 +354,21 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         dataset_ndims = len(h5_dataset.shape)
         expected_dims_str = "_".join( map(str, range( dataset_ndims-1 )) )
         if dims_str != expected_dims_str:
-            raise self.RequestError( 400, "For now, queries must include all data axes.  "
-                                          "Your query requested dims: {}".format( dims_str ) )
+            raise self.RequestError( httplib.BAD_REQUEST,
+                                     "For now, queries must include all data axes.  "
+                                     "Your query requested dims: {}".format( dims_str ) )
         
         roi_start = tuple( int(x) for x in roi_start_str.split('_') )
         roi_shape = tuple( int(x) for x in roi_shape_str.split('_') )
 
         if len(roi_start) != dataset_ndims-1:
-            raise self.RequestError( 400, "Invalid start coordinate: {} Expected {} dims, got {} "
-                                          "".format( roi_start, dataset_ndims-1, len(roi_start) ) )
+            raise self.RequestError( httplib.BAD_REQUEST,
+                                     "Invalid start coordinate: {} Expected {} dims, got {} "
+                                     "".format( roi_start, dataset_ndims-1, len(roi_start) ) )
         if len(roi_shape) != dataset_ndims-1:
-            raise self.RequestError( 400, "Invalid cutout shape: {} Expected {} dims, got {} "
-                                          "".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
+            raise self.RequestError( httplib.BAD_REQUEST,
+                                     "Invalid cutout shape: {} Expected {} dims, got {} "
+                                     "".format( roi_shape, dataset_ndims-1, len(roi_shape) ) )
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )
         return roi_start, roi_stop
