@@ -392,6 +392,7 @@ class H5MockServer(HTTPServer):
                       Otherwise, start the server in its own process (default).
         disable_server_logging: If true, disable the normal HttpServer logging of every request.
         """
+        import time
         import threading
         import multiprocessing
 
@@ -399,17 +400,21 @@ class H5MockServer(HTTPServer):
             server_address = (hostname, port)
             server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
             server.serve_forever()
-    
-        if same_process:
-            server_thread = threading.Thread( target=server_main )
-            server_thread.daemon = True
-            server_thread.terminate = lambda:None # Implement the Process interface for debugging convenience...
-            server_thread.start()
-            return server_thread
-        else:
-            server_proc = multiprocessing.Process( target=server_main )
-            server_proc.start()
-            return server_proc
+
+        try:    
+            if same_process:
+                server_thread = threading.Thread( target=server_main )
+                server_thread.daemon = True
+                server_thread.terminate = lambda:None # Implement the Process interface for debugging convenience...
+                server_thread.start()
+                return server_thread
+            else:
+                server_proc = multiprocessing.Process( target=server_main )
+                server_proc.start()
+                return server_proc
+        finally:
+            # Give the server some time to start up before clients attempt to query it.
+            time.sleep(0.1)
 
 class H5MockServerDataFile(object):
     """
