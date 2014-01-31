@@ -316,7 +316,7 @@ if __name__ == "__main__":
     if parsed_args.mock_server_hdf5:
         from mockserver.h5mockserver import H5MockServer
         hostname, port = parsed_args.hostname.split(":")
-        server_proc = H5MockServer.create_and_start( parsed_args.mock_server_hdf5,
+        server_proc, shutdown_event = H5MockServer.create_and_start( parsed_args.mock_server_hdf5,
                                                      hostname,
                                                      int(port),
                                                      same_process=False,
@@ -332,4 +332,5 @@ if __name__ == "__main__":
             print "The dialog was rejected."
     finally:
         if server_proc:
-            server_proc.terminate()
+            shutdown_event.set()
+            server_proc.join()

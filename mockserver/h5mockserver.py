@@ -41,6 +41,8 @@ Obviously, the aim here is not to implement the full DVID API.
 import re
 import json
 import httplib
+import threading
+import multiprocessing
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 import numpy
@@ -375,11 +377,16 @@ class H5MockServer(HTTPServer):
         HTTPServer.__init__(self, *args, **kwargs)
         self.h5filepath = h5filepath
         self.disable_logging = disable_logging
+        self.shutdown_completed_event = threading.Event()
     
     def serve_forever(self):
-        with h5py.File( self.h5filepath ) as h5_file:
-            self.h5_file = h5_file
-            HTTPServer.serve_forever(self)
+        try:
+            with h5py.File( self.h5filepath ) as h5_file:
+                self.h5_file = h5_file
+                HTTPServer.serve_forever(self)
+        finally:
+            self.server_close()
+            self.shutdown_completed_event.set()
 
     @classmethod
     def create_and_start(cls, h5filepath, hostname, port, same_process=False, disable_server_logging=True):
@@ -392,29 +399,45 @@ class H5MockServer(HTTPServer):
                       Otherwise, start the server in its own process (default).
         disable_server_logging: If true, disable the normal HttpServer logging of every request.
         """
-        import time
-        import threading
-        import multiprocessing
+        def server_main(shutdown_event):
+            """
+            This function can be used as the target function for either a thread or process.
 
-        def server_main():
+            :param shutdown_event: Either a threading.Event or multiprocessing.Event, 
+                                   depending how this function was started.
+            
+            - Start the server in a thread
+            - Wait for the shutdown_event
+            - Shutdown the server
+            """
+            # Fire up the server in a separate thread
             server_address = (hostname, port)
             server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
-            server.serve_forever()
+            server_thread = threading.Thread( target=server.serve_forever )
+            server_thread.start()
+            
+            # Wait for the client to set the shutdown event
+            shutdown_event.wait()
+            server.shutdown()
+            
+            # Wait until shutdown is complete before exiting this thread/process
+            server.shutdown_completed_event.wait()
 
         try:    
             if same_process:
-                server_thread = threading.Thread( target=server_main )
-                server_thread.daemon = True
-                server_thread.terminate = lambda:None # Implement the Process interface for debugging convenience...
-                server_thread.start()
-                return server_thread
+                shutdown_event = threading.Event()
+                server_start_thread = threading.Thread( target=server_main, args=(shutdown_event,) )
+                server_start_thread.start()
+                return server_start_thread, shutdown_event
             else:
-                server_proc = multiprocessing.Process( target=server_main )
+                shutdown_event = multiprocessing.Event()
+                server_proc = multiprocessing.Process( target=server_main, args=(shutdown_event,) )
                 server_proc.start()
-                return server_proc
+                return server_proc, shutdown_event
         finally:
             # Give the server some time to start up before clients attempt to query it.
-            time.sleep(0.1)
+            import time
+            time.sleep(0.2)
 
 class H5MockServerDataFile(object):
     """

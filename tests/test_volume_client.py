@@ -22,7 +22,7 @@ class TestVolumeClient(object):
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc = cls._start_mockserver( cls.test_filepath, same_process=False )
+        cls.server_proc, cls.shutdown_event = cls._start_mockserver( cls.test_filepath, same_process=False )
 
     @classmethod
     def teardownClass(cls):
@@ -30,7 +30,8 @@ class TestVolumeClient(object):
         Override.  Called by nosetests.
         """
         shutil.rmtree(cls._tmp_dir)
-        cls.server_proc.terminate()
+        cls.shutdown_event.set()
+        cls.server_proc.join()
 
     @classmethod
     def _generate_testdata_h5(cls, test_filepath):
