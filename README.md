@@ -30,7 +30,7 @@ assert cutout_array.shape == (1,100,100,100)
 # Modify it
 new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
 tagged_data = vigra.taggedView( new_data, metainfo.axistags )
-cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
+vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
 ```
 
 **TODO**:
