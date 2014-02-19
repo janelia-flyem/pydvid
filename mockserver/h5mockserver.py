@@ -145,7 +145,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Respond to the query for dataset info.
         Note: For the purposes of this mock server, only a 
               subset of the json fields are provided here.
-              Furthmore the "DAG" is just the alphabetized uuids.
+              Furthermore the "DAG" is just the alphabetized uuids.
         
         API Notes:  - Parents and children should be lists, and if there is no parent/child at a node, it should be represented with [], not null
         """
@@ -416,12 +416,13 @@ class H5MockServer(HTTPServer):
             server_thread = threading.Thread( target=server.serve_forever )
             server_thread.start()
             
-            # Wait for the client to set the shutdown event
-            shutdown_event.wait()
-            server.shutdown()
-            
-            # Wait until shutdown is complete before exiting this thread/process
-            server.shutdown_completed_event.wait()
+            try:
+                # Wait for the client to set the shutdown event
+                shutdown_event.wait()
+            finally:
+                server.shutdown()
+                # Wait until shutdown is complete before exiting this thread/process
+                server.shutdown_completed_event.wait()
 
         try:    
             if same_process:
