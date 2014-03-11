@@ -52,6 +52,13 @@ import vigra
 from dvidclient.volume_metainfo import MetaInfo
 from dvidclient.volume_codec import VolumeCodec
 
+import platform
+if platform.system() == 'Windows':
+    # Apparently the server can't be started as a separate process on windows due to some pickle error,
+    #  possibly related to the funky way lazyflow adds dvidclient to sys.path
+    # It might work if same_process=True, but it hasn't been tested.
+    raise ImportError("dvidclient.h5mockserver is not tested on Windows...")
+
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
     The request handler for the H5MockServer.
