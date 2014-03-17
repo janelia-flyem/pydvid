@@ -52,13 +52,6 @@ import vigra
 from dvidclient.volume_metainfo import MetaInfo
 from dvidclient.volume_codec import VolumeCodec
 
-import platform
-if platform.system() == 'Windows':
-    # Apparently the server can't be started as a separate process on windows due to some pickle error,
-    #  possibly related to the funky way lazyflow adds dvidclient to sys.path
-    # It might work if same_process=True, but it hasn't been tested.
-    raise ImportError("dvidclient.h5mockserver is not tested on Windows...")
-
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
     The request handler for the H5MockServer.
@@ -406,46 +399,53 @@ class H5MockServer(HTTPServer):
                       Otherwise, start the server in its own process (default).
         disable_server_logging: If true, disable the normal HttpServer logging of every request.
         """
-        def server_main(shutdown_event):
-            """
-            This function can be used as the target function for either a thread or process.
-
-            :param shutdown_event: Either a threading.Event or multiprocessing.Event, 
-                                   depending how this function was started.
-            
-            - Start the server in a thread
-            - Wait for the shutdown_event
-            - Shutdown the server
-            """
-            # Fire up the server in a separate thread
-            server_address = (hostname, port)
-            server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
-            server_thread = threading.Thread( target=server.serve_forever )
-            server_thread.start()
-            
-            try:
-                # Wait for the client to set the shutdown event
-                shutdown_event.wait()
-            finally:
-                server.shutdown()
-                # Wait until shutdown is complete before exiting this thread/process
-                server.shutdown_completed_event.wait()
-
         try:    
             if same_process:
                 shutdown_event = threading.Event()
-                server_start_thread = threading.Thread( target=server_main, args=(shutdown_event,) )
+                server_args = (hostname, port, h5filepath, disable_server_logging, shutdown_event,)
+                server_start_thread = threading.Thread( target=cls._server_main, args=server_args )
                 server_start_thread.start()
                 return server_start_thread, shutdown_event
             else:
                 shutdown_event = multiprocessing.Event()
-                server_proc = multiprocessing.Process( target=server_main, args=(shutdown_event,) )
+                server_args = (hostname, port, h5filepath, disable_server_logging, shutdown_event,)
+                server_proc = multiprocessing.Process( target=cls._server_main, args=server_args )
                 server_proc.start()
                 return server_proc, shutdown_event
         finally:
             # Give the server some time to start up before clients attempt to query it.
             import time
             time.sleep(0.2)
+
+    @classmethod
+    def _server_main(cls, hostname, port, h5filepath, disable_server_logging, shutdown_event):
+        """
+        This function can be used as the target function for either a thread or process.
+
+        (Note: We can't define this as a local function within create_and_start because of an 
+               inconsistency in behavior between the Linux and Windows multiprocessing module.)
+
+        :param shutdown_event: Either a threading.Event or multiprocessing.Event, 
+                               depending how this function was started.
+        
+        - Start the server in a thread
+        - Wait for the shutdown_event
+        - Shutdown the server
+        """
+        # Fire up the server in a separate thread
+        server_address = (hostname, port)
+        server = H5MockServer( h5filepath, disable_server_logging, server_address, H5CutoutRequestHandler )
+        server_thread = threading.Thread( target=server.serve_forever )
+        server_thread.start()
+        
+        try:
+            # Wait for the client to set the shutdown event
+            shutdown_event.wait()
+        finally:
+            server.shutdown()
+            # Wait until shutdown is complete before exiting this thread/process
+            server.shutdown_completed_event.wait()
+
 
 class H5MockServerDataFile(object):
     """
