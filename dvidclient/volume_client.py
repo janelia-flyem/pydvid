@@ -20,18 +20,27 @@ class VolumeClient(object):
     To retrieve data from multiple remote volumes, instantiate multiple VolumeClient objects.
     """
     class ErrorResponseException( Exception ):
-        def __init__(self, attempted_action, status_code, reason, response_body):
-            self.attempted_action = attempted_action
+        def __init__(self, attempted_action_name, status_code, reason, response_body, 
+                     method, request_uri, request_body="<unspecified>", request_headers="<unspecified>"):
+            self.attempted_action_name = attempted_action_name
             self.status_code = status_code
             self.reason = reason
             self.response_body = response_body
+            self.method = method
+            self.request_uri = request_uri
+            self.request_body = request_body
+            self.request_headers = request_headers
         
         def __str__(self):
             caption = 'While attempting "{}" DVID returned an error: {}, "{}"\n'\
-                      ''.format( self.attempted_action, self.status_code, self.reason )
-            if self.status_code == httplib.INTERNAL_SERVER_ERROR:
-                caption += "Server response body:\n"
-                caption += self.response_body
+                      ''.format( self.attempted_action_name, self.status_code, self.reason )
+            caption += "Request METHOD: {}\n".format( self.method )
+            caption += "Request URI: {}\n".format( self.request_uri )
+            caption += "Request HEADERS: {}\n".format( self.request_headers )
+            caption += "Request BODY: {}\n".format( self.request_body )
+            caption += "Response body from server was:\n"
+            caption += self.response_body
+            caption += "\n"
             return caption
 
     @classmethod
@@ -52,7 +61,8 @@ class VolumeClient(object):
             with contextlib.closing( connection.getresponse() ) as response:
                 if response.status != httplib.NO_CONTENT:
                     raise VolumeClient.ErrorResponseException( 
-                        "create new data", response.status, response.reason, response.read() )
+                        "create new data", response.status, response.reason, response.read(),
+                         "POST", rest_query, metainfo_json, headers)
                 response_text = response.read()
                 if response_text:
                     raise Exception( "Expected an empty response from the DVID server.  "
@@ -70,7 +80,8 @@ class VolumeClient(object):
             with contextlib.closing( connection.getresponse() ) as response:
                 if response.status != httplib.OK:
                     raise VolumeClient.ErrorResponseException( 
-                        "query datasets info", response.status, response.reason, response.read() )
+                        "query datasets info", response.status, response.reason, response.read(),
+                        "GET", rest_query, "")
                 
                 try:
                     datasets_info = json.loads( response.read() )
@@ -99,7 +110,8 @@ class VolumeClient(object):
         response = connection.getresponse()
         if response.status != httplib.OK:
             raise self.ErrorResponseException( 
-                "metainfo query", response.status, response.reason, response.read() )
+                "metainfo query", response.status, response.reason, response.read(),
+                "GET", rest_query, "" )
 
         self.metainfo = MetaInfo.create_from_json( response.read() )
         self._codec = VolumeCodec( self.metainfo )
@@ -119,7 +131,8 @@ class VolumeClient(object):
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != httplib.OK:
                     raise self.ErrorResponseException( 
-                        "subvolume query", response.status, response.reason, response.read() )
+                        "subvolume query", response.status, response.reason, response.read(),
+                        "GET", rest_query, "" )
                 
                 # "Full" roi shape includes channel axis and ALL channels
                 full_roi_shape = numpy.array(stop) - start
@@ -151,7 +164,8 @@ class VolumeClient(object):
             with contextlib.closing( self._connection.getresponse() ) as response:
                 if response.status != httplib.NO_CONTENT:
                     raise self.ErrorResponseException( 
-                        "subvolume post", response.status, response.reason, response.read() )
+                        "subvolume post", response.status, response.reason, response.read(),
+                         "POST", rest_query, "<binary data>", headers)
                 
                 # Something (either dvid or the httplib) gets upset if we don't read the full response.
                 response.read()
