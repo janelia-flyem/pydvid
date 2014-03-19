@@ -113,11 +113,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             named_param_patterns[name] = "(?P<" + name + ">" + pattern + ")" 
 
         # Supported REST command formats -> methods and handlers
-        rest_cmds = { "^/api/datasets/info$" :                                  { "GET"  : self._do_get_datasets_info },
-                      "^/api/node/{uuid}/{dataname}/schema$" :                  { "GET"  : self._do_get_volume_schema },
-                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :       { "POST" : self._do_create_volume },
-                      "^/api/node/{uuid}/{dataname}/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
-                                                                                  "POST" : self._do_modify_data }
+        rest_cmds = { "^/api/datasets/info$" :                                      { "GET"  : self._do_get_datasets_info },
+                      "^/api/node/{uuid}/{dataname}/schema$" :                      { "GET"  : self._do_get_volume_schema },
+                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :           { "POST" : self._do_create_volume },
+                      "^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
+                                                                                      "POST" : self._do_modify_data }
                     }
 
         # Find the matching rest command and execute the handler.

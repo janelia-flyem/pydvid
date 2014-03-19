@@ -194,7 +194,7 @@ class VolumeClient(object):
         
         num_dims = len(self.metainfo.shape)
         dims_string = "_".join( map(str, range(num_dims-1) ) )
-        rest_query = "/api/node/{uuid}/{data_name}/{dims_string}/{roi_shape_str}/{start_str}"\
+        rest_query = "/api/node/{uuid}/{data_name}/raw/{dims_string}/{roi_shape_str}/{start_str}"\
                      "".format( uuid=self.uuid, 
                                 data_name=self.data_name, 
                                 dims_string=dims_string, 
