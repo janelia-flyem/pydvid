@@ -3,7 +3,7 @@ import StringIO
 import numpy
 import vigra
 
-from dvidclient.volume_metainfo import VolumeInfo
+from dvidclient.volume_metainfo import VolumeMetadata
 from dvidclient.volume_codec import VolumeCodec
 
 class TestVolumeCodec(object):
@@ -11,9 +11,8 @@ class TestVolumeCodec(object):
     def test_basic_roundtrip(self):
         data = numpy.random.randint(0,255, (3, 100, 200)).astype(numpy.uint8)
         
-        metadata = VolumeInfo.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-        volmeinfo = VolumeInfo( data.shape, data.dtype, 'cxy', metadata )
-        codec = VolumeCodec( volmeinfo )
+        metadata = VolumeMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
+        codec = VolumeCodec( metadata )
         
         stream = StringIO.StringIO()
         codec.encode_from_ndarray(stream, data)
@@ -27,9 +26,8 @@ class TestVolumeCodec(object):
         for dtype in [numpy.uint8, numpy.uint16, numpy.uint32, numpy.float32, numpy.float64]:
             data = numpy.random.randint(0,255, (3,100,200)).astype(dtype)
              
-            metadata = VolumeInfo.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-            volmeinfo = VolumeInfo( data.shape, data.dtype, 'cxy', metadata )
-            codec = VolumeCodec( volmeinfo )
+            metadata = VolumeMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
+            codec = VolumeCodec( metadata )
              
             stream = StringIO.StringIO()
             codec.encode_from_ndarray(stream, data)

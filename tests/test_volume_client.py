@@ -6,7 +6,7 @@ import numpy
 import h5py
 
 from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metainfo import VolumeInfo
+from dvidclient.volume_metainfo import VolumeMetadata
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVolumeClient(object):
@@ -48,7 +48,7 @@ class TestVolumeClient(object):
         cls.data_name = "indices_data"
         cls.volume_location = "/datasets/{dvid_dataset}/volumes/{data_name}".format( **cls.__dict__ )
         cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
-        cls.volume_metadata = VolumeInfo.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
+        cls.volume_metadata = VolumeMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
 
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
@@ -82,14 +82,13 @@ class TestVolumeClient(object):
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
         """
         volume_name = 'new_volume'
-        metadata = VolumeInfo.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
-        volumeinfo = VolumeInfo( metadata )
-        VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, volumeinfo )
+        metadata = VolumeMetadata.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
+        VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, metadata )
          
         with h5py.File(self.test_filepath, 'r') as f:
             volumes_group = "/datasets/{dvid_dataset}/volumes".format( dvid_dataset=self.dvid_dataset )
             assert volume_name in f[volumes_group], "Volume wasn't created: {}".format( volumes_group + "/" + volume_name )
-            assert VolumeInfo.create_volumeinfo_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == volumeinfo,\
+            assert VolumeMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metadata,\
                 "New volume has the wrong metadata"
  
  
@@ -162,13 +161,12 @@ class TestVolumeClient(object):
     def test_zz_readme_usage(self):
         import numpy
         from dvidclient.volume_client import VolumeClient
-        from dvidclient.volume_metainfo import VolumeInfo
+        from dvidclient.volume_metainfo import VolumeMetadata
          
         # Create a new remote volume
         uuid = 'abcde'
-        metadata = VolumeInfo.create_default_metadata((4,200,200,200), numpy.uint8, 'cxyz', "1.0", "")
-        volumeinfo = VolumeInfo( metadata )
-        VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volumeinfo )
+        volume_metadata = VolumeMetadata.create_default_metadata((4,200,200,200), numpy.uint8, 'cxyz', "1.0", "")
+        VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volume_metadata )
      
         # Open connection for a particular volume    
         vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )

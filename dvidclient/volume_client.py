@@ -7,7 +7,7 @@ import json
 
 import numpy
 
-from volume_metainfo import VolumeInfo
+from volume_metainfo import VolumeMetadata
 from volume_codec import VolumeCodec
 
 import logging
@@ -44,17 +44,17 @@ class VolumeClient(object):
             return caption
 
     @classmethod
-    def create_volume(cls, hostname, uuid, data_name, volumeinfo):
+    def create_volume(cls, hostname, uuid, data_name, volume_metadata):
         """
         Class method.
         Open a connection to the server and create a new remote volume.
         After creating the volume, you can instantiate a new VolumeClient to access it.
         """
         with contextlib.closing( HTTPConnection(hostname) ) as connection:
-            dvid_typename = volumeinfo.determine_dvid_typename()
+            dvid_typename = volume_metadata.determine_dvid_typename()
             rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
                          "".format( **locals() )
-            metadata_json = json.dumps(volumeinfo.metadata)
+            metadata_json = volume_metadata.to_json()
             headers = { "Content-Type" : "text/json" }
             connection.request( "POST", rest_query, body=metadata_json, headers=headers )
     
@@ -113,8 +113,8 @@ class VolumeClient(object):
                 "metadata query", response.status, response.reason, response.read(),
                 "GET", rest_query, "" )
 
-        self.volumeinfo = VolumeInfo( response.read() )
-        self._codec = VolumeCodec( self.volumeinfo )
+        self.volume_metadata = VolumeMetadata( response.read() )
+        self._codec = VolumeCodec( self.volume_metadata )
         
         self._lock = threading.Lock() # TODO: Instead of locking, auto-instantiate separate connections for each thread...
     
@@ -136,7 +136,7 @@ class VolumeClient(object):
                 
                 # "Full" roi shape includes channel axis and ALL channels
                 full_roi_shape = numpy.array(stop) - start
-                full_roi_shape[0] = self.volumeinfo.shape[0]
+                full_roi_shape[0] = self.volume_metadata.shape[0]
                 vdata = self._codec.decode_to_ndarray( response, full_roi_shape )
     
                 # Was the response fully consumed?  Check.
@@ -153,7 +153,7 @@ class VolumeClient(object):
 
     def modify_subvolume(self, start, stop, new_data):
         assert start[0] == 0, "Subvolume modifications must include all channels."
-        assert stop[0] == self.volumeinfo.shape[0], "Subvolume modifications must include all channels."
+        assert stop[0] == self.volume_metadata.shape[0], "Subvolume modifications must include all channels."
 
         rest_query = self._format_subvolume_rest_query(start, stop)
         body_data_stream = StringIO.StringIO()
@@ -173,7 +173,7 @@ class VolumeClient(object):
     def _format_subvolume_rest_query(self, start, stop):
         start = numpy.asarray(start)
         stop = numpy.asarray(stop)
-        shape = self.volumeinfo.shape
+        shape = self.volume_metadata.shape
 
         assert len(start) == len(stop) == len(shape), \
             "start/stop/shape mismatch: {}/{}/{}".format( start, stop, shape )
@@ -193,7 +193,7 @@ class VolumeClient(object):
         roi_shape_str = "_".join( map(str, dvid_roi_shape) )
         start_str = "_".join( map(str, start) )
         
-        num_dims = len(self.volumeinfo.shape)
+        num_dims = len(self.volume_metadata.shape)
         dims_string = "_".join( map(str, range(num_dims-1) ) )
         rest_query = "/api/node/{uuid}/{data_name}/raw/{dims_string}/{roi_shape_str}/{start_str}"\
                      "".format( uuid=self.uuid, 

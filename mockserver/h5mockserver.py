@@ -48,7 +48,7 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import numpy
 import h5py
 
-from dvidclient.volume_metainfo import VolumeInfo
+from dvidclient.volume_metainfo import VolumeMetadata
 from dvidclient.volume_codec import VolumeCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
@@ -222,13 +222,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         body_len = self.headers.get("Content-Length")
         metadata_json = self.rfile.read( int(body_len) )
         try:
-            volumeinfo = VolumeInfo( metadata_json )
+            volume_metadata = VolumeMetadata( metadata_json )
         except ValueError as ex:
             raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
                                      'Error parsing volume metadata: {}\n'
                                      'Invalid metadata response body was:\n{}'
                                      ''.format( ex.args[0], metadata_json ) )
-        expected_typename = volumeinfo.determine_dvid_typename()
+        expected_typename = volume_metadata.determine_dvid_typename()
         if typename != expected_typename:
             raise self.RequestError( httplib.BAD_REQUEST,
                                      "Cannot create volume.  "
@@ -237,7 +237,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         # Create the new volume in the appropriate 'volumes' group,
         #  and then link to it in the node group.
-        self.server.h5_file.create_dataset( volume_path, shape=volumeinfo.shape, dtype=volumeinfo.dtype )
+        self.server.h5_file.create_dataset( volume_path, shape=volume_metadata.shape, dtype=volume_metadata.dtype )
         linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
         self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
         self.server.h5_file.flush()
@@ -252,8 +252,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Respond to a query for dataset info.
         """
         dataset = self._get_h5_dataset(uuid, dataname)
-        volumeinfo = VolumeInfo.create_volumeinfo_from_h5_dataset(dataset)
-        json_text = json.dumps( volumeinfo.metadata )
+        volume_metadata = VolumeMetadata.create_from_h5_dataset(dataset)
+        json_text = json.dumps( volume_metadata )
 
         self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
@@ -275,8 +275,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         data = dataset[slicing]
         
-        volumeinfo = VolumeInfo.create_volumeinfo_from_h5_dataset(dataset)
-        codec = VolumeCodec( volumeinfo )
+        volume_metadata = VolumeMetadata.create_from_h5_dataset(dataset)
+        codec = VolumeCodec( volume_metadata )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
         self.send_response(httplib.OK)
@@ -301,8 +301,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
         
-        volumeinfo = VolumeInfo.create_volumeinfo_from_h5_dataset(dataset)
-        codec = VolumeCodec( volumeinfo )
+        volume_metadata = VolumeMetadata.create_from_h5_dataset(dataset)
+        codec = VolumeCodec( volume_metadata )
         data = codec.decode_to_ndarray(self.rfile, full_roi_shape)
 
         dataset[slicing] = data

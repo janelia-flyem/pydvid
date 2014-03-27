@@ -1,6 +1,6 @@
 import numpy
 
-from volume_metainfo import VolumeInfo
+from volume_metainfo import VolumeMetadata
 
 class VolumeCodec(object):
 
@@ -10,27 +10,24 @@ class VolumeCodec(object):
     # Defined here for clients to use.
     VOLUME_MIMETYPE = "application/octet-stream"
     
-    def __init__(self, volumeinfo):
+    def __init__(self, volume_metadata):
         """
-        metainfo: a volume_metainfo.MetaInfo instance describing the remote volume.
+        volume_metadata: a VolumeMetadata instance describing the remote volume.
         """
-        assert isinstance(volumeinfo, VolumeInfo)
-        self._volumeinfo = volumeinfo
+        assert isinstance(volume_metadata, VolumeMetadata)
+        self._volume_metadata = volume_metadata
         
     def decode_to_ndarray(self, stream, full_roi_shape):
         """
         Decode the info in the given stream to a numpy.ndarray.
         
-        Note: self._volumeinfo.shape is IGNORED, because it refers to the entire DVID volume.
+        Note: self._volume_metadata.shape is IGNORED, because it refers to the entire DVID volume.
               Instead, the full_roi_shape parameter determines the size of the decoded dataset,
               including the channel dimension.
         """
-        # numpy can be finicky about the integer types we give it in the shape field
-        # full_roi_shape = tuple( map(int, full_roi_shape) )
-        
         # Note that dvid uses fortran order indexing
         array = numpy.ndarray( full_roi_shape,
-                               dtype=self._volumeinfo.dtype,
+                               dtype=self._volume_metadata.dtype,
                                order='F' )
 
         buf = numpy.getbuffer(array)
@@ -47,8 +44,10 @@ class VolumeCodec(object):
         - array must have the same dtype as this codec's metainfo
         """
         # Check for bad input.
-        assert isinstance( array, numpy.ndarray ), "Expected a numpy.ndarray, not {}".format( type(array) )
-        assert array.dtype == self._volumeinfo.dtype, "Wrong dtype.  Expected {}, got {}".format( self._metainfo.dtype, array.dtype )
+        assert isinstance( array, numpy.ndarray ), \
+            "Expected a numpy.ndarray, not {}".format( type(array) )
+        assert array.dtype == self._volume_metadata.dtype, \
+            "Wrong dtype.  Expected {}, got {}".format( self._metainfo.dtype, array.dtype )
 
         # Unfortunately, if the array isn't F_CONTIGUOUS, we have to copy it.
         if not array.flags['F_CONTIGUOUS']:
@@ -60,7 +59,7 @@ class VolumeCodec(object):
         self._send_from_buffer(buf, stream)
 
     def calculate_buffer_len(self, shape):
-        return numpy.prod(shape) * self._volumeinfo.dtype.type().nbytes
+        return numpy.prod(shape) * self._volume_metadata.dtype.type().nbytes
 
     @classmethod
     def _read_to_buffer(cls, buf, stream):
@@ -75,7 +74,9 @@ class VolumeCodec(object):
         remaining_bytes = len(buf)
         while remaining_bytes > 0:
             next_chunk_bytes = min( remaining_bytes, VolumeCodec.STREAM_CHUNK_SIZE )
-            buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] = stream.read( next_chunk_bytes )
+            chunk_start = len(buf)-remaining_bytes
+            chunk_stop = len(buf)-(remaining_bytes-next_chunk_bytes)
+            buf[chunk_start:chunk_stop] = stream.read( next_chunk_bytes )
             remaining_bytes -= next_chunk_bytes
 
     @classmethod
@@ -86,6 +87,8 @@ class VolumeCodec(object):
         remaining_bytes = len(buf)
         while remaining_bytes > 0:
             next_chunk_bytes = min( remaining_bytes, VolumeCodec.STREAM_CHUNK_SIZE )
-            stream.write( buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] )
+            chunk_start = len(buf)-remaining_bytes
+            chunk_stop = len(buf)-(remaining_bytes-next_chunk_bytes)
+            stream.write( buf[chunk_start:chunk_stop] )
             remaining_bytes -= next_chunk_bytes
     

@@ -1,5 +1,4 @@
 import json
-import collections
 
 import numpy
 try:
@@ -14,79 +13,84 @@ try:
 except:
     _have_h5py = False
 
-_VolumeInfo = collections.namedtuple('_VolumeInfo', 'shape dtype axiskeys metadata')
-class VolumeInfo(_VolumeInfo):
+class VolumeMetadata(dict):
     """
-    Tuple describing a DVID volume. Fields are:
+    A dict subclass for the dvid nd-data metadata response.
+    Also provides the following convenience attributes:
     
-    shape: The shape of the array, including a prepended 'channel' axis
-    dtype: e.g. numpy.uint8
-    axiskeys: A string representing the indexing order for the volume, e.g. "cxyz".
-              Note the prepended channel axis.
-    metadata: The raw, parsed metadata provided by dvid (a dict)
+        dtype: e.g. numpy.uint8
+        shape: The shape of the array, including a prepended 'channel' axis
+        axiskeys: A string representing the indexing order for the volume, e.g. "cxyz".
+                  Note the prepended channel axis.
+                  NOTE: By DVID convention, the axiskeys are generally expressed in fortran order.
     """
-    def __new__(cls, *args, **kwargs):
+    
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def axiskeys(self):
+        return self._axiskeys
+
+    def __init__(self, metadata):
         """
         Constructor. Three signatures:
         - VolumeInfo(jsontext)
-        - VolumeInfo(metadata)
-        - VolumeInfo(shape, dtype, axiskeys, metadata) # as a 'normal' tuple
+        - VolumeInfo(metadata_dict)
         
-        The second form parses the given json text and return a VolumeInfo namedtuple.
-        Raise a ValueError if the json can't be parsed.
-        
-        NOTE: By DVID convention, the axiskeys are returned assuming FORTRAN ORDER.
-        NOTE: The VolumeInfo will prepend a 'channel' axis to the information.
+        The first form parses the given json text, and raises a ValueError if the json can't be parsed.
         """
-        if len(args) + len(kwargs) > 1:
-            # Ensure that the dtype arg is always literally a 
-            #  numpy.dtype (e.g. numpy.dtype('uint8'), 
-            #  not a scaler type (e.g. numpy.uint8)
-            args = list(args)
-            args[1] = numpy.dtype(args[1])
-            return _VolumeInfo.__new__( cls, *args, **kwargs )
-
-        assert len(kwargs) == 0 and len(args) == 1, \
-            "Wrong numnber of arguments to VolumeInfo constructor."
-
-        assert args[0] is not None
-        if isinstance( args[0], str ):
-            metadata = json.loads( args[0] )
-        elif isinstance( args[0], dict ):
-            metadata = args[0]
+        assert isinstance( metadata, (dict, str) ), "Expected metadata to be a dict or json str."
+        if isinstance( metadata, str ):
+            metadata = json.loads( metadata )
 
         # TODO: Validate metadata against a schema...
-    
-        # We always in include "channel" as the FIRST axis
-        # (DVID uses fortran-order notation.)
-        shape = []
-        shape.append( len(metadata["Values"]) )
-        axiskeys = 'c'
-    
+
+        # Init base class: just copy original metadata
+        super( VolumeMetadata, self ).__init__( **metadata )
+
         dtypes = []
         for channel_fields in metadata["Values"]:
             dtypes.append( numpy.dtype( channel_fields["DataType"] ) )
 
         assert all( map( lambda dtype: dtype == dtypes[0], dtypes ) ), \
             "Can't support heterogeneous channel types: {}".format( dtypes )
-    
+        self._dtype = dtypes[0]
+        
+        # We always in include "channel" as the FIRST axis
+        # (DVID uses fortran-order notation.)
+        shape = []
+        shape.append( len(metadata["Values"]) ) 
         for axisfields in metadata['Axes']:
-            key = str(axisfields["Label"]).lower()
-            axiskeys += key
             shape.append( axisfields["Size"] )
+        self._shape = tuple(shape)
+    
+        axiskeys = 'c'
+        for axisfields in metadata['Axes']:
+            axiskeys += str(axisfields["Label"]).lower()
+        self._axiskeys = axiskeys
 
-        # Now init tuple baseclass
-        return _VolumeInfo.__new__( cls, tuple(shape), dtypes[0], axiskeys, metadata )
+    def to_json(self):
+        """
+        Convenience method: dump to json string.
+        """
+        # TODO: Validate schema
+        return json.dumps(self)
 
     @classmethod
     def create_default_metadata(cls, shape, dtype, axiskeys, resolution, units):
         """
-        Create a default metadata dict from scratch using the given parameters,
+        Create a default VolumeMetadata object from scratch using the given parameters,
         which can then be customized as needed.
         
         Example usage:
         
-            metadata = VolumeInfo.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
+            metadata = VolumeMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
     
             # Customize: Adjust resolution for Z-axis
             assert metadata["Axes"][2]["Label"] == "Z"
@@ -98,12 +102,11 @@ class VolumeInfo(_VolumeInfo):
             metadata["Values"][2]["Label"] = "intensity-B"
 
             # Prepare for transmission: encode to json
-            jsontext = json.dumps( metadata )
+            jsontext = metadata.to_json()
         
         """
         assert axiskeys[0] == 'c', "Channel axis must be first"
-        
-        # Convert to numpy.dtype if necessary (consistent with ndarray.dtype)
+        assert len(axiskeys) == len(shape), "shape/axiskeys mismatch: {} doesn't match {}".format( axiskeys, shape )
         dtype = numpy.dtype(dtype)
         
         metadata = {}
@@ -115,13 +118,13 @@ class VolumeInfo(_VolumeInfo):
             axisdict["Units"] = units
             axisdict["Size"] = size
             metadata["Axes"].append( axisdict )
-        metadata["Values"] = []
         
+        metadata["Values"] = []
         num_channels = shape[ 0 ]
         for _ in range( num_channels ):
             metadata["Values"].append( { "DataType" : dtype.name,
                                          "Label" : "" } )
-        return metadata
+        return VolumeMetadata(metadata)
     
     def determine_dvid_typename(self):
         typenames = { ('uint8',  1) : 'grayscale8',
@@ -141,19 +144,19 @@ class VolumeInfo(_VolumeInfo):
     if _have_vigra:
         def create_axistags(self):
             """
-            Generate a vigra.AxisTags object from this metadata
+            Generate a vigra.AxisTags object corresponding to this VolumeMetadata
             """
             tags = vigra.AxisTags()
             tags.insert( 0, vigra.AxisInfo('c', typeFlags=vigra.AxisType.Channels) )
             dtypes = []
             channel_labels = []
-            for channel_fields in self.metadata["Values"]:
+            for channel_fields in self["Values"]:
                 dtypes.append( numpy.dtype( channel_fields["DataType"] ).type )
                 channel_labels.append( channel_fields["Label"] )
 
             # We monkey-patch the channel labels onto the axistags object as a new member
             tags.channelLabels = channel_labels
-            for axisfields in self.metadata['Axes']:
+            for axisfields in self['Axes']:
                 key = str(axisfields["Label"]).lower()
                 res = axisfields["Resolution"]
                 tag = vigra.defaultAxistags(key)[0]
@@ -174,7 +177,7 @@ class VolumeInfo(_VolumeInfo):
 
     if _have_h5py:    
         @classmethod
-        def create_volumeinfo_from_h5_dataset(cls, dataset):
+        def create_from_h5_dataset(cls, dataset):
             """
             Create a VolumeInfo object to describe the given h5 dataset object.
             dataset: An hdf5 dataset object that meets the following criteria:
@@ -187,7 +190,7 @@ class VolumeInfo(_VolumeInfo):
             if 'dvid_metadata' in dataset.attrs:
                 metadata_json = dataset.attrs['dvid_metadata']
                 metadata = json.loads( metadata_json )
-                return VolumeInfo( metadata )
+                return VolumeMetadata( metadata )
             elif _have_vigra and 'axistags' in dataset.attrs:
                 axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
                 return cls.create_volumeinfo_from_axistags( shape, dtype, axistags )
@@ -195,7 +198,6 @@ class VolumeInfo(_VolumeInfo):
                 # Choose default axiskeys
                 default_keys = 'cxyzt'
                 axiskeys = default_keys[:len(shape)]
-                metadata = VolumeInfo.create_default_metadata( shape, dtype, axiskeys, 1.0, "" )
-                return VolumeInfo( shape, dtype, axiskeys, metadata )
+                return VolumeMetadata.create_default_metadata( shape, dtype, axiskeys, 1.0, "" )
     
     
