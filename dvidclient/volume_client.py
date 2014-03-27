@@ -7,7 +7,7 @@ import json
 
 import numpy
 
-from volume_metainfo import MetaInfo
+from volume_metainfo import VolumeInfo
 from volume_codec import VolumeCodec
 
 import logging
@@ -44,25 +44,25 @@ class VolumeClient(object):
             return caption
 
     @classmethod
-    def create_volume(cls, hostname, uuid, data_name, metainfo):
+    def create_volume(cls, hostname, uuid, data_name, volumeinfo):
         """
         Class method.
         Open a connection to the server and create a new remote volume.
         After creating the volume, you can instantiate a new VolumeClient to access it.
         """
         with contextlib.closing( HTTPConnection(hostname) ) as connection:
-            dvid_typename = metainfo.determine_dvid_typename()
+            dvid_typename = volumeinfo.determine_dvid_typename()
             rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
                          "".format( **locals() )
-            metainfo_json = metainfo.format_to_json()
+            metadata_json = json.dumps(volumeinfo.metadata)
             headers = { "Content-Type" : "text/json" }
-            connection.request( "POST", rest_query, body=metainfo_json, headers=headers )
+            connection.request( "POST", rest_query, body=metadata_json, headers=headers )
     
             with contextlib.closing( connection.getresponse() ) as response:
                 if response.status != httplib.NO_CONTENT:
                     raise VolumeClient.ErrorResponseException( 
                         "create new data", response.status, response.reason, response.read(),
-                         "POST", rest_query, metainfo_json, headers)
+                         "POST", rest_query, metadata_json, headers)
                 response_text = response.read()
                 if response_text:
                     raise Exception( "Expected an empty response from the DVID server.  "
@@ -104,17 +104,17 @@ class VolumeClient(object):
         self.data_name = data_name
         connection = HTTPConnection(hostname)
         self._connection = connection
-        rest_query = "/api/node/{uuid}/{data_name}/schema".format( uuid=uuid, data_name=data_name )
+        rest_query = "/api/node/{uuid}/{data_name}/metadata".format( uuid=uuid, data_name=data_name )
         connection.request( "GET", rest_query )
         
         response = connection.getresponse()
         if response.status != httplib.OK:
             raise self.ErrorResponseException( 
-                "metainfo query", response.status, response.reason, response.read(),
+                "metadata query", response.status, response.reason, response.read(),
                 "GET", rest_query, "" )
 
-        self.metainfo = MetaInfo.create_from_json( response.read() )
-        self._codec = VolumeCodec( self.metainfo )
+        self.volumeinfo = VolumeInfo( response.read() )
+        self._codec = VolumeCodec( self.volumeinfo )
         
         self._lock = threading.Lock() # TODO: Instead of locking, auto-instantiate separate connections for each thread...
     
@@ -136,8 +136,8 @@ class VolumeClient(object):
                 
                 # "Full" roi shape includes channel axis and ALL channels
                 full_roi_shape = numpy.array(stop) - start
-                full_roi_shape[0] = self.metainfo.shape[0]
-                vdata = self._codec.decode_to_vigra_array( response, full_roi_shape )
+                full_roi_shape[0] = self.volumeinfo.shape[0]
+                vdata = self._codec.decode_to_ndarray( response, full_roi_shape )
     
                 # Was the response fully consumed?  Check.
                 # NOTE: This last read() is not optional.
@@ -153,11 +153,11 @@ class VolumeClient(object):
 
     def modify_subvolume(self, start, stop, new_data):
         assert start[0] == 0, "Subvolume modifications must include all channels."
-        assert stop[0] == self.metainfo.shape[0], "Subvolume modifications must include all channels."
+        assert stop[0] == self.volumeinfo.shape[0], "Subvolume modifications must include all channels."
 
         rest_query = self._format_subvolume_rest_query(start, stop)
         body_data_stream = StringIO.StringIO()
-        self._codec.encode_from_vigra_array(body_data_stream, new_data)
+        self._codec.encode_from_ndarray(body_data_stream, new_data)
         with self._lock:
             headers = { "Content-Type" : VolumeCodec.VOLUME_MIMETYPE }
             self._connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
@@ -173,7 +173,7 @@ class VolumeClient(object):
     def _format_subvolume_rest_query(self, start, stop):
         start = numpy.asarray(start)
         stop = numpy.asarray(stop)
-        shape = self.metainfo.shape
+        shape = self.volumeinfo.shape
 
         assert len(start) == len(stop) == len(shape), \
             "start/stop/shape mismatch: {}/{}/{}".format( start, stop, shape )
@@ -181,18 +181,19 @@ class VolumeClient(object):
         assert (start >= 0).all(), "Invalid start: {}".format( start )
         assert (start < shape).all(), "Invalid start/shape: {}/{}".format( start, shape )
         assert (stop <= shape).all(), "Invalid stop/shape: {}/{}".format( stop, shape )
+        assert start[0] == 0, "Must request all channels with every query"
+        assert stop[0] == shape[0], "Must request all channels with every query"
 
         # Drop channel before requesting from DVID
-        channel_index = self.metainfo.axistags.channelIndex
-        start = numpy.delete( start, channel_index )
-        stop = numpy.delete( stop, channel_index )
+        start = start[1:]
+        stop = stop[1:]
 
         # Dvid roi shape doesn't include channel
         dvid_roi_shape = stop - start
         roi_shape_str = "_".join( map(str, dvid_roi_shape) )
         start_str = "_".join( map(str, start) )
         
-        num_dims = len(self.metainfo.shape)
+        num_dims = len(self.volumeinfo.shape)
         dims_string = "_".join( map(str, range(num_dims-1) ) )
         rest_query = "/api/node/{uuid}/{data_name}/raw/{dims_string}/{roi_shape_str}/{start_str}"\
                      "".format( uuid=self.uuid, 

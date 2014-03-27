@@ -3,11 +3,10 @@ import shutil
 import tempfile
 
 import numpy
-import vigra
 import h5py
 
 from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metainfo import MetaInfo
+from dvidclient.volume_metainfo import VolumeInfo
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVolumeClient(object):
@@ -22,7 +21,7 @@ class TestVolumeClient(object):
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc, cls.shutdown_event = cls._start_mockserver( cls.test_filepath, same_process=False )
+        cls.server_proc, cls.shutdown_event = cls._start_mockserver( cls.test_filepath, same_process=True )
 
     @classmethod
     def teardownClass(cls):
@@ -42,7 +41,6 @@ class TestVolumeClient(object):
         data = numpy.indices( (10, 100, 200, 3) )
         assert data.shape == (4, 10, 100, 200, 3)
         data = data.astype( numpy.uint32 )
-        data = vigra.taggedView( data, 'tzyxc' )
 
         # Choose names
         cls.dvid_dataset = "datasetA"
@@ -50,11 +48,12 @@ class TestVolumeClient(object):
         cls.data_name = "indices_data"
         cls.volume_location = "/datasets/{dvid_dataset}/volumes/{data_name}".format( **cls.__dict__ )
         cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
+        cls.volume_metadata = VolumeInfo.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
 
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
             test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data )
+            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.volume_metadata )
 
 
     @classmethod
@@ -83,23 +82,24 @@ class TestVolumeClient(object):
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
         """
         volume_name = 'new_volume'
-        metainfo = MetaInfo( (4,100,100,100), numpy.uint8, vigra.defaultAxistags('cxyz') )
-        VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, metainfo )
-        
+        metadata = VolumeInfo.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
+        volumeinfo = VolumeInfo( metadata )
+        VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, volumeinfo )
+         
         with h5py.File(self.test_filepath, 'r') as f:
             volumes_group = "/datasets/{dvid_dataset}/volumes".format( dvid_dataset=self.dvid_dataset )
             assert volume_name in f[volumes_group], "Volume wasn't created: {}".format( volumes_group + "/" + volume_name )
-            assert MetaInfo.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metainfo,\
-                "New volume has the wrong metainfo"
-
-
+            assert VolumeInfo.create_volumeinfo_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == volumeinfo,\
+                "New volume has the wrong metadata"
+ 
+ 
     def test_cutout(self):
         """
         Get some data from the server and check it.
         """
         self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, 
-                                    self.data_name, (0,50,5,9,0), (3,150,20,10,4) )
-    
+                                    self.data_name, (0,9,5,50,0), (4,10,20,150,3) )
+     
     def _test_retrieve_volume(self, hostname, h5filename, uuid, data_name, start, stop):
         """
         hostname: The dvid server host
@@ -111,26 +111,25 @@ class TestVolumeClient(object):
         # Retrieve from server
         dvid_vol = VolumeClient( hostname, uuid, data_name )
         subvolume = dvid_vol.retrieve_subvolume( start, stop )
-        
+         
         # Compare to file
         self._check_subvolume(h5filename, uuid, data_name, start, stop, subvolume)
-
+ 
     def test_push(self):
         """
         Modify a remote subvolume and verify that the server wrote it.
         """
         # Cutout dims
-        start, stop = (0,50,5,9,0), (3,150,20,10,4)
+        start, stop = (0,9,5,50,0), (4,10,20,150,3)
         shape = numpy.subtract( stop, start )
-
+ 
         # Generate test data
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
-        subvolume = vigra.taggedView( subvolume, vigra.defaultAxistags('cxyzt') )
-
+ 
         # Run test.
         self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, 
                                    self.data_name, start, stop, subvolume )
-
+ 
     def _test_send_subvolume(self, hostname, h5filename, uuid, data_name, start, stop, subvolume):
         """
         hostname: The dvid server host
@@ -143,46 +142,45 @@ class TestVolumeClient(object):
         # Send to server
         dvid_vol = VolumeClient( hostname, uuid, data_name )
         dvid_vol.modify_subvolume(start, stop, subvolume)
-        
+         
         # Check file
         self._check_subvolume(h5filename, uuid, data_name, start, stop, subvolume)        
-
+ 
     def _check_subvolume(self, h5filename, uuid, data_name, start, stop, subvolume):
         """
         Compare a given subvolume to an hdf5 dataset.  Assert if they don't match.
         """
         # Retrieve from file
-        slicing = [ slice(x,y) for x,y in zip(start, stop) ]
-        slicing = tuple(reversed(slicing))
+        slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
         with h5py.File(h5filename, 'r') as f:
             expected_data = f["all_nodes"][uuid][data_name][slicing]
-
+ 
         # Compare.
-        assert ( subvolume.view(numpy.ndarray) == expected_data.transpose() ).all(),\
+        assert ( subvolume == expected_data ).all(),\
             "Data from server didn't match data from file!"
-
+ 
     def test_zz_readme_usage(self):
-        import numpy, vigra
+        import numpy
         from dvidclient.volume_client import VolumeClient
-        from dvidclient.volume_metainfo import MetaInfo
-        
+        from dvidclient.volume_metainfo import VolumeInfo
+         
         # Create a new remote volume
         uuid = 'abcde'
-        metainfo = MetaInfo( (4,200,200,200), numpy.uint8, vigra.defaultAxistags('cxyz') )
-        VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", metainfo )
-    
+        metadata = VolumeInfo.create_default_metadata((4,200,200,200), numpy.uint8, 'cxyz', "1.0", "")
+        volumeinfo = VolumeInfo( metadata )
+        VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volumeinfo )
+     
         # Open connection for a particular volume    
         vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )
-        
+         
         # Read from it
-        cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (1,110,120,130) ) # First axis is channel.
-        assert isinstance(cutout_array, vigra.VigraArray)
-        assert cutout_array.shape == (1,100,100,100)
-    
+        cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
+        assert isinstance(cutout_array, numpy.ndarray)
+        assert cutout_array.shape == (4,100,100,100)
+     
         # Modify it
         new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-        tagged_data = vigra.taggedView( new_data, metainfo.axistags )
-        cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
+        cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), new_data )
 
 if __name__ == "__main__":
     import sys
