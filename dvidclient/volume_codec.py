@@ -1,6 +1,6 @@
 import numpy
 
-from volume_metainfo import VolumeMetadata
+from volume_metadata import VolumeMetadata
 
 class VolumeCodec(object):
 

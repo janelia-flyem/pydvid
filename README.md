@@ -10,27 +10,26 @@ VolumeClient
 **Usage:**
 
 ```python
-import numpy, vigra
+import numpy
 from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metainfo import MetaInfo
-
+from dvidclient.volume_metadata import VolumeMetadata
+ 
 # Create a new remote volume
 uuid = 'abcde'
-metainfo = MetaInfo( (4,200,200,200), numpy.uint8, vigra.defaultAxistags('cxyz') )
-VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", metainfo )
+volume_metadata = VolumeMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
+VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volume_metadata )
 
 # Open connection for a particular volume    
 vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )
-
-# Read from it (first axis is channel)
-cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (1,110,120,130) )
-assert isinstance(cutout_array, vigra.VigraArray)
-assert cutout_array.shape == (1,100,100,100)
+ 
+# Read from it
+cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
+assert isinstance(cutout_array, numpy.ndarray)
+assert cutout_array.shape == (4,100,100,100)
 
 # Modify it
 new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-tagged_data = vigra.taggedView( new_data, metainfo.axistags )
-vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), tagged_data )
+cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), new_data )
 ```
 
 **TODO**:
@@ -63,18 +62,18 @@ The mock server pulls its data from an hdf5 file with a special structure.
 The `H5MockServerDataFile` utility class can be used to generate the file:
 
 ```python
-import numpy, vigra
+import numpy
 from mockserver.h5mockserver import H5MockServerDataFile
 
 # Generate a volume to store.
-data = numpy.random.randint(0,256, (100,200,300,1))
-data_view = vigra.taggedView( data, 'zyxc' ).astype( numpy.uint8 )
+data = numpy.random.randint( 0, 256, (1,100,200,300) )
+volume_metadata = VolumeMetadata.create_default_metadata( (1,100,200,300), numpy.uint8, 'cxyz', 1.0, "" )
 
 # Create special server datafile with one dataset, with one node.
 # Then add our data volume to it.
 with H5MockServerDataFile( 'mock_storage.h5' ) as server_datafile:
     server_datafile.add_node( 'my_dataset', 'abc123' )
-    server_datafile.add_volume( 'my_dataset', 'my_volume', data_view )
+    server_datafile.add_volume( 'my_dataset', 'my_volume', data_view, volume_metadata )
 ```
 
 Once you have a datafile, the server can be started from the command line:

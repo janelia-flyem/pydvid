@@ -6,7 +6,7 @@ import numpy
 import h5py
 
 from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metainfo import VolumeMetadata
+from dvidclient.volume_metadata import VolumeMetadata
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVolumeClient(object):
@@ -161,11 +161,11 @@ class TestVolumeClient(object):
     def test_zz_readme_usage(self):
         import numpy
         from dvidclient.volume_client import VolumeClient
-        from dvidclient.volume_metainfo import VolumeMetadata
+        from dvidclient.volume_metadata import VolumeMetadata
          
         # Create a new remote volume
         uuid = 'abcde'
-        volume_metadata = VolumeMetadata.create_default_metadata((4,200,200,200), numpy.uint8, 'cxyz', "1.0", "")
+        volume_metadata = VolumeMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
         VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volume_metadata )
      
         # Open connection for a particular volume    

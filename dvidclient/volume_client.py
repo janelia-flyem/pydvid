@@ -7,7 +7,7 @@ import json
 
 import numpy
 
-from volume_metainfo import VolumeMetadata
+from volume_metadata import VolumeMetadata
 from volume_codec import VolumeCodec
 
 import logging

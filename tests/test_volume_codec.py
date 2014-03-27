@@ -3,7 +3,7 @@ import StringIO
 import numpy
 import vigra
 
-from dvidclient.volume_metainfo import VolumeMetadata
+from dvidclient.volume_metadata import VolumeMetadata
 from dvidclient.volume_codec import VolumeCodec
 
 class TestVolumeCodec(object):
