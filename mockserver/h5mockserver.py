@@ -48,8 +48,8 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import numpy
 import h5py
 
-from dvidclient.volume_metadata import VolumeMetadata
-from dvidclient.volume_codec import VolumeCodec
+from dvidclient.voxels import VolumeMetadata
+from dvidclient.voxels import VolumeCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """

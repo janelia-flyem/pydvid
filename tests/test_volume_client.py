@@ -1,12 +1,12 @@
 import os
 import shutil
 import tempfile
+import httplib
 
 import numpy
 import h5py
 
-from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metadata import VolumeMetadata
+from dvidclient import voxels, general
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVolumeClient(object):
@@ -22,6 +22,7 @@ class TestVolumeClient(object):
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
         cls.server_proc, cls.shutdown_event = cls._start_mockserver( cls.test_filepath, same_process=True )
+        cls.client_connection = httplib.HTTPConnection( "localhost:8000" )
 
     @classmethod
     def teardownClass(cls):
@@ -48,7 +49,7 @@ class TestVolumeClient(object):
         cls.data_name = "indices_data"
         cls.volume_location = "/datasets/{dvid_dataset}/volumes/{data_name}".format( **cls.__dict__ )
         cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
-        cls.volume_metadata = VolumeMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
+        cls.volume_metadata = voxels.VolumeMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
 
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
@@ -70,7 +71,7 @@ class TestVolumeClient(object):
         return H5MockServer.create_and_start( h5filepath, "localhost", 8000, same_process, disable_server_logging )
     
     def test_query_datasets_info(self):
-        info = VolumeClient.query_datasets_info("localhost:8000")
+        info = general.get_datasets_info( self.client_connection )
         assert info["Datasets"][0]["Root"] == "abcde"
         assert info["Datasets"][0]["Nodes"]["abcde"]["Parents"] == []
         assert info["Datasets"][0]["Nodes"]["abcde"]["Children"] == []
@@ -82,13 +83,13 @@ class TestVolumeClient(object):
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
         """
         volume_name = 'new_volume'
-        metadata = VolumeMetadata.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
-        VolumeClient.create_volume( "localhost:8000", self.data_uuid, volume_name, metadata )
+        metadata = voxels.VolumeMetadata.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
+        voxels.create_new( self.client_connection, self.data_uuid, volume_name, metadata )
          
         with h5py.File(self.test_filepath, 'r') as f:
             volumes_group = "/datasets/{dvid_dataset}/volumes".format( dvid_dataset=self.dvid_dataset )
             assert volume_name in f[volumes_group], "Volume wasn't created: {}".format( volumes_group + "/" + volume_name )
-            assert VolumeMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metadata,\
+            assert voxels.VolumeMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metadata,\
                 "New volume has the wrong metadata"
  
  
@@ -96,20 +97,19 @@ class TestVolumeClient(object):
         """
         Get some data from the server and check it.
         """
-        self._test_retrieve_volume( "localhost:8000", self.test_filepath, self.data_uuid, 
+        self._test_retrieve_volume( self.test_filepath, self.data_uuid, 
                                     self.data_name, (0,9,5,50,0), (4,10,20,150,3) )
      
-    def _test_retrieve_volume(self, hostname, h5filename, uuid, data_name, start, stop):
+    def _test_retrieve_volume(self, h5filename, uuid, data_name, start, stop):
         """
-        hostname: The dvid server host
         h5filename: The h5 file to compare against
         h5group: The hdf5 group, also used as the uuid of the dvid dataset
         h5dataset: The dataset name, also used as the name of the dvid dataset
         start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
         """
         # Retrieve from server
-        dvid_vol = VolumeClient( hostname, uuid, data_name )
-        subvolume = dvid_vol.retrieve_subvolume( start, stop )
+        dvid_vol = voxels.VolumeClient( self.client_connection, uuid, data_name )
+        subvolume = dvid_vol.get_ndarray( start, stop )
          
         # Compare to file
         self._check_subvolume(h5filename, uuid, data_name, start, stop, subvolume)
@@ -126,12 +126,11 @@ class TestVolumeClient(object):
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
  
         # Run test.
-        self._test_send_subvolume( "localhost:8000", self.test_filepath, self.data_uuid, 
+        self._test_send_subvolume( self.test_filepath, self.data_uuid, 
                                    self.data_name, start, stop, subvolume )
  
-    def _test_send_subvolume(self, hostname, h5filename, uuid, data_name, start, stop, subvolume):
+    def _test_send_subvolume(self, h5filename, uuid, data_name, start, stop, subvolume):
         """
-        hostname: The dvid server host
         h5filename: The h5 file to compare against
         h5group: The hdf5 group, also used as the uuid of the dvid dataset
         h5dataset: The dataset name, also used as the name of the dvid dataset
@@ -139,8 +138,8 @@ class TestVolumeClient(object):
         subvolume: The data to send.  Must be of the correct shape for start,stop coordinates.
         """
         # Send to server
-        dvid_vol = VolumeClient( hostname, uuid, data_name )
-        dvid_vol.modify_subvolume(start, stop, subvolume)
+        dvid_vol = voxels.VolumeClient( self.client_connection, uuid, data_name )
+        dvid_vol.post_ndarray(start, stop, subvolume)
          
         # Check file
         self._check_subvolume(h5filename, uuid, data_name, start, stop, subvolume)        
@@ -159,26 +158,29 @@ class TestVolumeClient(object):
             "Data from server didn't match data from file!"
  
     def test_zz_readme_usage(self):
+        import httplib
         import numpy
-        from dvidclient.volume_client import VolumeClient
-        from dvidclient.volume_metadata import VolumeMetadata
+        from dvidclient import voxels
+         
+        # Open a connection
+        connection = httplib.HTTPConnection( "localhost:8000" )
          
         # Create a new remote volume
         uuid = 'abcde'
-        volume_metadata = VolumeMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
-        VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volume_metadata )
-     
-        # Open connection for a particular volume    
-        vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )
+        volume_metadata = voxels.VolumeMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
+        voxels.create_new( connection, uuid, "my_volume", volume_metadata )
+
+        # Use the VolumeClient convenience class to manipulate a particular data volume     
+        vol_client = voxels.VolumeClient( connection, uuid, "my_volume" )
          
         # Read from it
-        cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
+        cutout_array = vol_client.get_ndarray( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
         assert isinstance(cutout_array, numpy.ndarray)
         assert cutout_array.shape == (4,100,100,100)
      
         # Modify it
-        new_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-        cutout_array = vol_client.modify_subvolume( (0,10,20,30), (4,110,120,130), new_data )
+        updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
+        cutout_array = vol_client.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
 
 if __name__ == "__main__":
     import sys

@@ -1,10 +1,9 @@
 import StringIO
 
 import numpy
-import vigra
 
-from dvidclient.volume_metadata import VolumeMetadata
-from dvidclient.volume_codec import VolumeCodec
+from dvidclient.voxels import VolumeMetadata
+from dvidclient.voxels.volume_codec import VolumeCodec
 
 class TestVolumeCodec(object):
     
