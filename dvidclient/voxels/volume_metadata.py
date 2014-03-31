@@ -1,6 +1,7 @@
 import json
 
 import numpy
+
 try:
     import vigra
     _have_vigra = True
@@ -49,7 +50,7 @@ class VolumeMetadata(dict):
         if isinstance( metadata, str ):
             metadata = json.loads( metadata )
 
-        # TODO: Validate metadata against a schema...
+        
 
         # Init base class: just copy original metadata
         super( VolumeMetadata, self ).__init__( **metadata )
