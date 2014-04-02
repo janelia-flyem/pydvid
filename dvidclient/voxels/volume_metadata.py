@@ -1,6 +1,8 @@
+import os
 import json
 
 import numpy
+import jsonschema
 
 try:
     import vigra
@@ -13,6 +15,9 @@ try:
     _have_h5py = True
 except:
     _have_h5py = False
+
+import dvidclient.util
+metadata_schema = dvidclient.util.parse_schema( 'voxels_metadata.jsonschema' )
 
 class VolumeMetadata(dict):
     """
@@ -50,7 +55,8 @@ class VolumeMetadata(dict):
         if isinstance( metadata, str ):
             metadata = json.loads( metadata )
 
-        
+        # Check schema...
+        jsonschema.validate( metadata, metadata_schema )
 
         # Init base class: just copy original metadata
         super( VolumeMetadata, self ).__init__( **metadata )
