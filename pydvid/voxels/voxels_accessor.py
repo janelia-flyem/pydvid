@@ -5,6 +5,10 @@ class VoxelsAccessor(object):
     Http client for retrieving a voxels volume data from a DVID server.
     An instance of VoxelsAccessor is capable of retrieving data from only one remote data volume.
     To retrieve data from multiple remote volumes, instantiate multiple DvidClient objects.
+    
+    **TODO**:
+    
+    * Allow users to provide a pre-allocated array when requesting data
     """
     def __init__(self, connection, uuid, data_name):
         """

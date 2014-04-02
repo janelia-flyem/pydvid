@@ -1,3 +1,9 @@
+"""
+This module implements a simple widget for viewing the list of datasets and nodes in a DVID instance.
+Requires PyQt4.  To see a demo of it in action, start up your dvid server run this::
+
+$ python pydvid/gui/contents_browser.py localhost:8000
+"""
 import socket
 import httplib
 import collections
@@ -17,6 +23,12 @@ class ContentsBrowser(QDialog):
     
     If the dialog is constructed with mode='specify_new', then the user is asked to provide a new data name, 
     and choose the dataset and node to which it will belong. 
+    
+    **TODO:**
+
+    * Show more details in dataset list (e.g. shape, axes, pixel type)
+    * Show more details in node list (e.g. date modified, parents, children)
+    * Gray-out nodes that aren't "open" for adding new volumes
     """
     def __init__(self, suggested_hostnames, mode='select_existing', parent=None):
         """

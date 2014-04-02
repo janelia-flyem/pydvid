@@ -1,3 +1,21 @@
+JSON Schema Repo
+================
+
+pydvid includes the `dvidschema`_ repo as a `git subtree` located at prefix pydvid/dvidschema.
+Changes to the dvidschema repo must be pulled into pydvid using git subtree pull.  For example:
+
+.. code-block:: bash
+
+    # Add the dvidschema repo as a remote if you haven't yet...
+    git remote add -f janelia-dvidschema https://github.com/janelia-flyem/dvidschema
+    
+    # Pull the most recent changes from dvidschema into our own repo's subtree
+    git fetch janelia-dvidschema
+    git subtree pull --prefix pydvid/dvidschema janelia-dvidschema master
+
+.. _dvidschema: https://github.com/janelia-flyem/dvidschema
+
+
 Testing
 =======
 
