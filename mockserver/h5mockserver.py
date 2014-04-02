@@ -484,7 +484,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             dset_info["Alias"] = dataset_name
             for node_index, uuid in enumerate(uuids):
                 # Don't bother with most node info fields
-                dset_info["Nodes"][uuid] = { "GlobalID" : uuid }
+                dset_info["Nodes"][uuid] = { "GlobalID" : uuid,
+                                             "VersionID" : 0,
+                                             "Locked" : False,
+                                             "Created" : "1999-12-12",
+                                             "Updated" : "2000-01-01" }
                 
                 # Assign a single parent/child for each node,
                 # except first/last
