@@ -45,7 +45,7 @@ class VoxelsMetadata(dict):
         A string representing the axis indexing order of the volume, e.g. 'cxyz'
         Always starts with 'c' (channel).
         
-        .. note:: By DVID convention, the axiskeys are generally expressed in fortran order.
+        .. note:: By DVID convention, the axiskeys are expressed in fortran order.
         """
         return self._axiskeys
 

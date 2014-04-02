@@ -35,3 +35,17 @@ Quickstart
     # Modify it
     updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
     cutout_array = dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
+
+A note about data axes
+----------------------
+
+pydvid gives you ND-data as a ``numpy.ndarray``. 
+We use the same axis order convention that DVID uses (Fortran order).
+In the DVID API, channel (i.e. 'Values' in DVID terminology) is not considered a separate array axis.
+However, in pydvid, a separate axis is **always** used to represent the channel, **even for arrays with only a single channel**.
+The channel axis is always in the first slicing position.
+
+For example: DVID considers a 3D ``grayscale8`` volume of size ``(80,90,100)`` to have 3 axes (say, ``"X"``, ``"Y"``, ``"Z"``), 
+but pydvid will give you a 4D array of shape ``(1,80,90,100)``, indexed by ``my_array[c,x,y,z]``.  
+Again, note that the first axis is always ``'c'`` (channel) for all nd-arrays returned by pydvid. 
+
