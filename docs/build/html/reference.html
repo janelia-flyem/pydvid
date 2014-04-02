@@ -10,8 +10,8 @@
     
     <title>API Reference &mdash; pydvid 0.1 documentation</title>
     
-    <link rel="stylesheet" href="_static/default.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="static/default.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
@@ -22,9 +22,9 @@
         HAS_SOURCE:  true
       };
     </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
     <link rel="top" title="pydvid 0.1 documentation" href="index.html" />
     <link rel="next" title="JSON Schema Repo" href="maintenance.html" />
     <link rel="prev" title="Quickstart" href="quickstart.html" /> 
@@ -71,26 +71,26 @@
 </div>
 <span class="target" id="module-pydvid.keyvalue.keyvalue"></span><dl class="function">
 <dt id="pydvid.keyvalue.keyvalue.create_new">
-<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">create_new</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#create_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.create_new" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">create_new</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em><big>)</big><a class="reference internal" href="modules/pydvid/keyvalue/keyvalue.html#create_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.create_new" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new keyvalue table in the dvid server.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="pydvid.keyvalue.keyvalue.get_value">
-<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="modules/pydvid/keyvalue/keyvalue.html#get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Request the value for the given key and return the whole thing.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="pydvid.keyvalue.keyvalue.get_value_response">
-<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value_response</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#get_value_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value_response" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value_response</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="modules/pydvid/keyvalue/keyvalue.html#get_value_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value_response" title="Permalink to this definition">¶</a></dt>
 <dd><p>Request the value for the given key return the raw HTTPResponse object.
 The caller may opt to &#8216;stream&#8217; the data from the response instead of reading it all at once.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="pydvid.keyvalue.keyvalue.put_value">
-<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">put_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#put_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.put_value" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">put_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em>, <em>value</em><big>)</big><a class="reference internal" href="modules/pydvid/keyvalue/keyvalue.html#put_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.put_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Store the given value to the keyvalue data.
 value should be either str or a file-like object with fileno() and read() methods.</p>
 </dd></dl>
@@ -129,7 +129,7 @@ value should be either str or a file-like object with fileno() and read() method
                         title="next chapter">JSON Schema Repo</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
-    <li><a href="_sources/reference.txt"
+    <li><a href="sources/reference.txt"
            rel="nofollow">Show Source</a></li>
   </ul>
 <div id="searchbox" style="display: none">
