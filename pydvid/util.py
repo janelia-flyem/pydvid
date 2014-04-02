@@ -31,7 +31,7 @@ def get_json_generic( connection, resource_path, schema=None ):
             if isinstance( schema, str ):
                 schema = parse_schema( schema )
             assert isinstance( schema, dict )
-            jsonschema.validate( schema, parsed_response )
+            jsonschema.validate( parsed_response, schema )
 
         return parsed_response
 
