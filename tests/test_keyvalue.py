@@ -5,7 +5,7 @@ import httplib
 
 import h5py
 
-from dvidclient import keyvalue
+from pydvid import keyvalue
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestKeyValue(object):

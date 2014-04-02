@@ -8,7 +8,7 @@ from PyQt4.QtGui import QPushButton, QDialog, QVBoxLayout, QGroupBox, QTreeWidge
                         QHBoxLayout
 from PyQt4.QtCore import Qt, QStringList, QSize, QEvent
 
-import dvidclient.general
+import pydvid.general
 
 class ContentsBrowser(QDialog):
     """
@@ -157,7 +157,7 @@ class ContentsBrowser(QDialog):
         try:
             # Query the server
             connection = httplib.HTTPConnection( new_hostname )
-            self._datasets_info = dvidclient.general.get_datasets_info( connection )
+            self._datasets_info = pydvid.general.get_datasets_info( connection )
             self._hostname = new_hostname
             self._connection = connection
         except socket.error as ex:

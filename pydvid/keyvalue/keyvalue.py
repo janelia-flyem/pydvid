@@ -1,6 +1,6 @@
 import httplib
 import contextlib
-from dvidclient.errors import DvidHttpError, UnexpectedResponseError
+from pydvid.errors import DvidHttpError, UnexpectedResponseError
 
 def create_new( connection, uuid, data_name ):
     """

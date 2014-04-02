@@ -15,8 +15,8 @@ try:
 except:
     _have_h5py = False
 
-import dvidclient.util
-metadata_schema = dvidclient.util.parse_schema( 'voxels_metadata.jsonschema' )
+import pydvid.util
+metadata_schema = pydvid.util.parse_schema( 'voxels_metadata.jsonschema' )
 
 class VoxelsMetadata(dict):
     """

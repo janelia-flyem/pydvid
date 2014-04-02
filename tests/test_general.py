@@ -5,7 +5,7 @@ import httplib
 
 import numpy
 
-from dvidclient import voxels, general
+from pydvid import voxels, general
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestGeneralApiCalls(object):

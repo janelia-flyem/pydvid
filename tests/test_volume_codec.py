@@ -2,8 +2,8 @@ import StringIO
 
 import numpy
 
-from dvidclient.voxels import VoxelsMetadata
-from dvidclient.voxels.voxels_nddata_codec import VoxelsNddataCodec
+from pydvid.voxels import VoxelsMetadata
+from pydvid.voxels.voxels_nddata_codec import VoxelsNddataCodec
 
 class TestVoxelsNddataCodec(object):
     

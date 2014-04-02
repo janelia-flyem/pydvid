@@ -4,10 +4,10 @@ import StringIO
 
 import numpy
 
-from dvidclient.errors import DvidHttpError, UnexpectedResponseError
-from dvidclient.util import get_json_generic
-from dvidclient.voxels.voxels_metadata import VoxelsMetadata
-from dvidclient.voxels.voxels_nddata_codec import VoxelsNddataCodec
+from pydvid.errors import DvidHttpError, UnexpectedResponseError
+from pydvid.util import get_json_generic
+from pydvid.voxels.voxels_metadata import VoxelsMetadata
+from pydvid.voxels.voxels_nddata_codec import VoxelsNddataCodec
 
 def get_metadata( connection, uuid, data_name ):
     """

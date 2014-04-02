@@ -11,8 +11,8 @@ VoxelsAccessor
 
 ```python
 import numpy
-from dvidclient.volume_client import VoxelsAccessor
-from dvidclient.voxels_metadata import VoxelsMetadata
+from pydvid.volume_client import VoxelsAccessor
+from pydvid.voxels_metadata import VoxelsMetadata
  
 # Create a new remote volume
 uuid = 'abcde'
@@ -44,7 +44,7 @@ DVID Contents Browser UI
 A simple widget for viewing the list of datasets and nodes in a DVID instance is provided.
 Requires PyQt4.  To see a demo of it in action, start up your dvid server run this:
 
-    $ python dvidclient/gui/contents_browser.py localhost:8000
+    $ python pydvid/gui/contents_browser.py localhost:8000
 
 **TODO:**
 - Show more details in dataset list (e.g. shape, axes, pixel type)

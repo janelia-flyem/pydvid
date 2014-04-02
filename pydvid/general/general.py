@@ -1,4 +1,4 @@
-from dvidclient.util import get_json_generic
+from pydvid.util import get_json_generic
 
 def get_server_info( connection ):
     return get_json_generic( connection, "/api/server/info", schema='server_info.jsonschema' )

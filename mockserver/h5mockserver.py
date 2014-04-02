@@ -49,8 +49,8 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import numpy
 import h5py
 
-from dvidclient.voxels import VoxelsMetadata
-from dvidclient.voxels import VoxelsNddataCodec
+from pydvid.voxels import VoxelsMetadata
+from pydvid.voxels import VoxelsNddataCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
@@ -153,7 +153,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
           "Maximum Cores": "1",
           "Server uptime": "0.12345",
           "Storage backend": "hdf5",
-          "Storage driver": "github.com/stuarteberg/dvidclient/mockserver/h5mockserver.py"
+          "Storage driver": "github.com/stuarteberg/pydvid/mockserver/h5mockserver.py"
         }
         json_text = json.dumps( server_info )
         self.send_response(httplib.OK)

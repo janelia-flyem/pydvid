@@ -6,7 +6,7 @@ import httplib
 import numpy
 import h5py
 
-from dvidclient import voxels
+from pydvid import voxels
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVoxelsAccessor(object):
@@ -265,7 +265,7 @@ class TestVoxelsAccessor(object):
     def test_zz_readme_usage(self):
         import httplib
         import numpy
-        from dvidclient import voxels
+        from pydvid import voxels
          
         # Open a connection
         connection = httplib.HTTPConnection( "localhost:8000" )

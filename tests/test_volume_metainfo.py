@@ -1,7 +1,7 @@
 import nose
 import numpy
 import h5py
-from dvidclient.voxels import VoxelsMetadata
+from pydvid.voxels import VoxelsMetadata
 
 class TestVolumeInfo( object ):
     metadata_json = """
