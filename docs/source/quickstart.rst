@@ -13,11 +13,11 @@ Quickstart
     
     # List the dataset roots: /api/datasets/list
     root_nodes_info = general.get_datasets_list( connection )
-    # print json.dumps( root_nodes_info, indent=4 )
+    print json.dumps( root_nodes_info, indent=4 )
 
     # Get detailed dataset info: /api/datasets/info
     dataset_details = general.get_datasets_info( connection )
-    # print json.dumps( dataset_details, indent=4 )
+    print json.dumps( dataset_details, indent=4 )
     
     # Create a new remote volume
     uuid = 'abcde'

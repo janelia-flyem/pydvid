@@ -1,8 +1,11 @@
 JSON Schema Repo
 ================
 
-pydvid includes the `dvidschema`_ repo as a `git subtree` located at prefix pydvid/dvidschema.
-Changes to the dvidschema repo must be pulled into pydvid using git subtree pull.  For example:
+pydvid includes the `dvidschema`_ repo as a `git subtree` located at prefix pydvid/dvidschema.  
+Older versionos of git do not include the ``subtree`` command, so you may need to upgrade git and/or 
+manually install the ``subtree`` command into your git installation.
+
+Changes to the dvidschema repo must be pulled into pydvid using ``git subtree pull``.  For example:
 
 .. code-block:: bash
 
@@ -85,8 +88,11 @@ First, view your changes locally:
 
 Your changes will not be visible online until they are applied to the special ``gh-pages`` branch of pydvid and pushed.
 
-There is a script in pydvid for automating this process.
-It is highly recommended that you use a special local copy of the pydvid repo to do this.  Just follow these steps:
+Fortunately, there is a script in pydvid for automating this process.
+
+.. note:: To avoid losing any uncommitted changes in your working copy, it is highly recommended that you use a special local copy of the pydvid repo to do this.
+
+Just follow these steps:
 
 1) Make sure your changes to the .rst files are pushed to pydvid/master.
 2) Make a new clone of the pydvid repo, and checkout the ``gh-pages`` branch.
@@ -96,16 +102,22 @@ Here's a walk-through (output not shown).
 
 .. code-block:: bash
 
-    $ pwd
-    /home/bergs/workspace/pydvid/docs
-    $ git add -u .
-    $ git commit -m "docs: Added instructions for documentation maintenance."
-    $ git push origin master
-    $ cd /tmp
-    $ git clone ssh://git@github.com/ilastik/pydvid pydvid-gh-pages
-    $ cd pydvid-gh-pages/
-    $ git checkout gh-pages
-    $ ./update_from_master.sh 
+    # 1) Commit your documentation changes, and push them to origin/master
+    cd docs
+    git add -u .
+    git commit -m "Made some docs changes."
+    git push origin master
+
+    # 2a) Make a NEW CLONE of the repo (leave your working copy alone.)
+    cd /tmp
+    git clone ssh://git@github.com/ilastik/pydvid pydvid-gh-pages
+    
+    # 2b) Checkout the gh-pages branch
+    cd pydvid-gh-pages/
+    git checkout gh-pages
+
+    # Run update_from_master.sh to make your changes visible on the web.
+    ./update_from_master.sh 
 
 The ``update_from_master.sh`` script handles the necessary pre-processing required by the github pages system.
 You can view the updated documentation at `<http://janelia-flyem.github.com/pydvid>`_.
