@@ -1,4 +1,4 @@
 from voxels import *
-from volume_metadata import VolumeMetadata
-from volume_client import VolumeClient
+from voxels_metadata import VoxelsMetadata
+from voxels_accessor import VoxelsAccessor
 

@@ -1,10 +1,10 @@
 import voxels
 
-class VolumeClient(object):
+class VoxelsAccessor(object):
     """
-    Http client for retrieving a cutout volume from a DVID server.
-    An instance of VolumeClient is capable of retrieving data from only one remote data volume.
-    To retrieve data from multiple remote volumes, instantiate multiple VolumeClient objects.
+    Http client for retrieving a voxels volume data from a DVID server.
+    An instance of VoxelsAccessor is capable of retrieving data from only one remote data volume.
+    To retrieve data from multiple remote volumes, instantiate multiple DvidClient objects.
     """
     def __init__(self, connection, uuid, data_name):
         """
@@ -16,19 +16,19 @@ class VolumeClient(object):
         self._connection = connection
 
         # Request this volume's metadata from DVID
-        self.volume_metadata = voxels.get_metadata( self._connection, uuid, data_name )
+        self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
 
     def get_ndarray( self, start, stop ):
         """
         Request the subvolume specified by the given start and stop pixel coordinates.
         """
-        return voxels.get_ndarray( self._connection, self.uuid, self.data_name, self.volume_metadata, start, stop )
+        return voxels.get_ndarray( self._connection, self.uuid, self.data_name, self.voxels_metadata, start, stop )
 
     def post_ndarray( self, start, stop, new_data ):
         """
         Overwrite subvolume specified by the given start and stop pixel coordinates with new_data.
         """
-        return voxels.post_ndarray( self._connection, self.uuid, self.data_name, self.volume_metadata, start, stop, new_data )
+        return voxels.post_ndarray( self._connection, self.uuid, self.data_name, self.voxels_metadata, start, stop, new_data )
 
     def __getitem__(self, slicing):
         """
@@ -39,7 +39,7 @@ class VolumeClient(object):
               but "normal" slicing, including stepping, is supported.
                
         Examples:
-            v = VolumeClient( "localhost:8000", uuid=abc123, data_name='my_3d_rgb_volume' )
+            v = VoxelsAccessor( "localhost:8000", uuid=abc123, data_name='my_3d_rgb_volume' )
             
             # The whole thing
             a = v[:]
@@ -72,9 +72,9 @@ class VolumeClient(object):
             # The above is equivalent to this:
             a = v[:,:10,:10,:][...,::2]            
         """
-        shape = self.volume_metadata.shape
-        expanded_slicing = VolumeClient._expand_slicing(slicing, shape)
-        explicit_slicing = VolumeClient._explicit_slicing(expanded_slicing, shape)
+        shape = self.voxels_metadata.shape
+        expanded_slicing = VoxelsAccessor._expand_slicing(slicing, shape)
+        explicit_slicing = VoxelsAccessor._explicit_slicing(expanded_slicing, shape)
         request_slicing, result_slicing = self._determine_request_slicings(explicit_slicing, shape)
 
         start = map( lambda s: s.start, request_slicing )
@@ -93,7 +93,7 @@ class VolumeClient(object):
             That is, you must include all channels, and your slices may not include a step size.
         
         Examples:
-            v = VolumeClient( "localhost:8000", uuid=abc123, data_name='my_3d_rgb_volume' )
+            v = VoxelsAccessor( "localhost:8000", uuid=abc123, data_name='my_3d_rgb_volume' )
             
             # Overwrite the third z-slice
             v[...,2] = a
@@ -104,8 +104,8 @@ class VolumeClient(object):
             # Forbidden: attempt to write only a subset of channels (the first axis)
             v[1,...] = green_data # Error!
         """
-        shape = self.volume_metadata.shape
-        full_slicing = VolumeClient._expand_slicing(slicing, shape)
+        shape = self.voxels_metadata.shape
+        full_slicing = VoxelsAccessor._expand_slicing(slicing, shape)
         request_slicing, result_slicing = self._determine_request_slicings(full_slicing, shape)
 
         # We only support pushing pure subvolumes, that is:

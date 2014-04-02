@@ -41,6 +41,7 @@ Obviously, the aim here is not to implement the full DVID API.
 import re
 import json
 import httplib
+import collections
 import threading
 import multiprocessing
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
@@ -48,8 +49,8 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 import numpy
 import h5py
 
-from dvidclient.voxels import VolumeMetadata
-from dvidclient.voxels import VolumeCodec
+from dvidclient.voxels import VoxelsMetadata
+from dvidclient.voxels import VoxelsNddataCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
@@ -113,17 +114,18 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             named_param_patterns[name] = "(?P<" + name + ">" + pattern + ")" 
 
         # Supported REST command formats -> methods and handlers
-        rest_cmds = { "^/api/server/info" :                                         { "GET"  : self._do_get_server_info },
-                      "^/api/server/types" :                                        { "GET"  : self._do_get_server_types },
-                      "^/api/datasets/list$" :                                      { "GET"  : self._do_get_datasets_list },
-                      "^/api/datasets/info$" :                                      { "GET"  : self._do_get_datasets_info },
-                      "^/api/node/{uuid}/{dataname}/metadata":                      { "GET"  : self._do_get_volume_schema },
-                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :           { "POST" : self._do_create_new_data },
-                      "^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
-                                                                                      "POST" : self._do_modify_data },
-                      "^/api/node/{uuid}/{dataname}/{key}$" :                       { "GET"  : self._do_get_keyvalue,
-                                                                                      "POST" : self._do_set_keyvalue }
-                    }
+        # Note that order matters here
+        rest_cmds = collections.OrderedDict([ ("^/api/server/info",                                          { "GET"  : self._do_get_server_info }),
+                                              ("^/api/server/types",                                         { "GET"  : self._do_get_server_types }),
+                                              ("^/api/datasets/list$",                                       { "GET"  : self._do_get_datasets_list }),
+                                              ("^/api/datasets/info$",                                       { "GET"  : self._do_get_datasets_info }),
+                                              ("^/api/node/{uuid}/{dataname}/metadata",                      { "GET"  : self._do_get_volume_schema }),
+                                              ("^/api/dataset/{uuid}/new/{typename}/{dataname}$",            { "POST" : self._do_create_new_data }),
+                                              ("^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$",  { "GET"  : self._do_get_data,
+                                                                                                               "POST" : self._do_modify_data }),
+                                              ("^/api/node/{uuid}/{dataname}/{key}$" ,                       { "GET"  : self._do_get_keyvalue,
+                                                                                                               "POST" : self._do_set_keyvalue })
+                                          ])
 
         # Find the matching rest command and execute the handler.
         for rest_cmd_format, cmd_methods in rest_cmds.items():
@@ -243,25 +245,25 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
             self.server.h5_file.flush()
         else:
-            self._create_volume(volume_path, typename)
+            self._create_volume( dataset_name, uuid, dataname, volume_path, typename )
 
         self.send_response(httplib.NO_CONTENT)
         self.send_header("Content-length", "0" )
         self.end_headers()
 
-    def _create_volume(self, volume_path, typename):
+    def _create_volume( self, dataset_name, uuid, dataname, volume_path, typename ):
         # Must read exact bytes.
         # Apparently rfile.read() just hangs.
         body_len = self.headers.get("Content-Length")
         metadata_json = self.rfile.read( int(body_len) )
         try:
-            volume_metadata = VolumeMetadata( metadata_json )
+            voxels_metadata = VoxelsMetadata( metadata_json )
         except ValueError as ex:
             raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
                                      'Error parsing volume metadata: {}\n'
                                      'Invalid metadata response body was:\n{}'
                                      ''.format( ex.args[0], metadata_json ) )
-        expected_typename = volume_metadata.determine_dvid_typename()
+        expected_typename = voxels_metadata.determine_dvid_typename()
         if typename != expected_typename:
             raise self.RequestError( httplib.BAD_REQUEST,
                                      "Cannot create volume.  "
@@ -270,7 +272,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         # Create the new volume in the appropriate 'volumes' group,
         #  and then link to it in the node group.
-        self.server.h5_file.create_dataset( volume_path, shape=volume_metadata.shape, dtype=volume_metadata.dtype )
+        self.server.h5_file.create_dataset( volume_path, shape=voxels_metadata.shape, dtype=voxels_metadata.dtype )
         linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
         self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
         self.server.h5_file.flush()
@@ -281,8 +283,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Respond to a query for dataset info.
         """
         dataset = self._get_h5_dataset(uuid, dataname)
-        volume_metadata = VolumeMetadata.create_from_h5_dataset(dataset)
-        json_text = json.dumps( volume_metadata )
+        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+        json_text = json.dumps( voxels_metadata )
 
         self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
@@ -304,12 +306,12 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         data = dataset[slicing]
         
-        volume_metadata = VolumeMetadata.create_from_h5_dataset(dataset)
-        codec = VolumeCodec( volume_metadata )
+        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+        codec = VoxelsNddataCodec( voxels_metadata )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
         self.send_response(httplib.OK)
-        self.send_header("Content-type", VolumeCodec.VOLUME_MIMETYPE)
+        self.send_header("Content-type", VoxelsNddataCodec.VOLUME_MIMETYPE)
         self.send_header("Content-length", str(buffer_len) )
         self.end_headers()
 
@@ -330,8 +332,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
         
-        volume_metadata = VolumeMetadata.create_from_h5_dataset(dataset)
-        codec = VolumeCodec( volume_metadata )
+        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+        codec = VoxelsNddataCodec( voxels_metadata )
         data = codec.decode_to_ndarray(self.rfile, full_roi_shape)
 
         dataset[slicing] = data
@@ -616,7 +618,7 @@ class H5MockServerDataFile(object):
 
         self._f.flush()
 
-    def add_volume(self, dataset_name, volume_name, volume, volume_metadata):
+    def add_volume(self, dataset_name, volume_name, volume, voxels_metadata):
         assert isinstance( volume, numpy.ndarray )
 
         volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
@@ -628,7 +630,7 @@ class H5MockServerDataFile(object):
         #        we would transpose to C-order before storing data and transpose 
         #        back to F-order when retrieving data.
         volume_dset = volumes_group.create_dataset( volume_name, data=volume )
-        volume_dset.attrs['dvid_metadata'] = json.dumps( volume_metadata )
+        volume_dset.attrs['dvid_metadata'] = json.dumps( voxels_metadata )
         
         # Add a link to this volume in every node
         for node in nodes_group.values():

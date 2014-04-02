@@ -2,16 +2,16 @@ import StringIO
 
 import numpy
 
-from dvidclient.voxels import VolumeMetadata
-from dvidclient.voxels.volume_codec import VolumeCodec
+from dvidclient.voxels import VoxelsMetadata
+from dvidclient.voxels.voxels_nddata_codec import VoxelsNddataCodec
 
-class TestVolumeCodec(object):
+class TestVoxelsNddataCodec(object):
     
     def test_basic_roundtrip(self):
         data = numpy.random.randint(0,255, (3, 100, 200)).astype(numpy.uint8)
         
-        metadata = VolumeMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-        codec = VolumeCodec( metadata )
+        metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
+        codec = VoxelsNddataCodec( metadata )
         
         stream = StringIO.StringIO()
         codec.encode_from_ndarray(stream, data)
@@ -25,8 +25,8 @@ class TestVolumeCodec(object):
         for dtype in [numpy.uint8, numpy.uint16, numpy.uint32, numpy.float32, numpy.float64]:
             data = numpy.random.randint(0,255, (3,100,200)).astype(dtype)
              
-            metadata = VolumeMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-            codec = VolumeCodec( metadata )
+            metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
+            codec = VoxelsNddataCodec( metadata )
              
             stream = StringIO.StringIO()
             codec.encode_from_ndarray(stream, data)

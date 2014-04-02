@@ -1,4 +1,3 @@
-import os
 import json
 
 import numpy
@@ -19,7 +18,7 @@ except:
 import dvidclient.util
 metadata_schema = dvidclient.util.parse_schema( 'voxels_metadata.jsonschema' )
 
-class VolumeMetadata(dict):
+class VoxelsMetadata(dict):
     """
     A dict subclass for the dvid nd-data metadata response.
     Also provides the following convenience attributes:
@@ -59,7 +58,7 @@ class VolumeMetadata(dict):
         jsonschema.validate( metadata, metadata_schema )
 
         # Init base class: just copy original metadata
-        super( VolumeMetadata, self ).__init__( **metadata )
+        super( VoxelsMetadata, self ).__init__( **metadata )
 
         dtypes = []
         for channel_fields in metadata["Values"]:
@@ -92,12 +91,12 @@ class VolumeMetadata(dict):
     @classmethod
     def create_default_metadata(cls, shape, dtype, axiskeys, resolution, units):
         """
-        Create a default VolumeMetadata object from scratch using the given parameters,
+        Create a default VoxelsMetadata object from scratch using the given parameters,
         which can then be customized as needed.
         
         Example usage:
         
-            metadata = VolumeMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
+            metadata = VoxelsMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
     
             # Customize: Adjust resolution for Z-axis
             assert metadata["Axes"][2]["Label"] == "Z"
@@ -131,7 +130,7 @@ class VolumeMetadata(dict):
         for _ in range( num_channels ):
             metadata["Values"].append( { "DataType" : dtype.name,
                                          "Label" : "" } )
-        return VolumeMetadata(metadata)
+        return VoxelsMetadata(metadata)
     
     def determine_dvid_typename(self):
         typenames = { ('uint8',  1) : 'grayscale8',
@@ -151,7 +150,7 @@ class VolumeMetadata(dict):
     if _have_vigra:
         def create_axistags(self):
             """
-            Generate a vigra.AxisTags object corresponding to this VolumeMetadata
+            Generate a vigra.AxisTags object corresponding to this VoxelsMetadata
             """
             tags = vigra.AxisTags()
             tags.insert( 0, vigra.AxisInfo('c', typeFlags=vigra.AxisType.Channels) )
@@ -197,7 +196,7 @@ class VolumeMetadata(dict):
             if 'dvid_metadata' in dataset.attrs:
                 metadata_json = dataset.attrs['dvid_metadata']
                 metadata = json.loads( metadata_json )
-                return VolumeMetadata( metadata )
+                return VoxelsMetadata( metadata )
             elif _have_vigra and 'axistags' in dataset.attrs:
                 axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
                 return cls.create_volumeinfo_from_axistags( shape, dtype, axistags )
@@ -205,6 +204,6 @@ class VolumeMetadata(dict):
                 # Choose default axiskeys
                 default_keys = 'cxyzt'
                 axiskeys = default_keys[:len(shape)]
-                return VolumeMetadata.create_default_metadata( shape, dtype, axiskeys, 1.0, "" )
+                return VoxelsMetadata.create_default_metadata( shape, dtype, axiskeys, 1.0, "" )
     
     

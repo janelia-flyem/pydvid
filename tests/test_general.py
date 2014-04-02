@@ -49,15 +49,15 @@ class TestGeneralApiCalls(object):
         cls.data_name = "indices_data"
         cls.volume_location = "/datasets/{dvid_dataset}/volumes/{data_name}".format( **cls.__dict__ )
         cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
-        cls.volume_metadata = voxels.VolumeMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
+        cls.voxels_metadata = voxels.VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
 
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
             test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.volume_metadata )
+            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.voxels_metadata )
 
             test_h5file.add_node( "datasetB", "12345" )
-            test_h5file.add_volume( "datasetB", cls.data_name, data, cls.volume_metadata )
+            test_h5file.add_volume( "datasetB", cls.data_name, data, cls.voxels_metadata )
 
 
     @classmethod

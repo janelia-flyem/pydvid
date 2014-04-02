@@ -5,22 +5,22 @@ Simple client for retrieving volume cutout data from a [DVID][] server as [vigra
 [DVID]: https://github.com/janelia-flyem/dvid
 [vigranumpy]: http://ukoethe.github.io/vigra/doc/vigranumpy/index.html
 
-VolumeClient
+VoxelsAccessor
 ------------
 **Usage:**
 
 ```python
 import numpy
-from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metadata import VolumeMetadata
+from dvidclient.volume_client import VoxelsAccessor
+from dvidclient.voxels_metadata import VoxelsMetadata
  
 # Create a new remote volume
 uuid = 'abcde'
-volume_metadata = VolumeMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
-VolumeClient.create_volume( "localhost:8000", uuid, "my_volume", volume_metadata )
+voxels_metadata = VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
+VoxelsAccessor.create_volume( "localhost:8000", uuid, "my_volume", voxels_metadata )
 
 # Open connection for a particular volume    
-vol_client = VolumeClient( "localhost:8000", uuid, "my_volume" )
+vol_client = VoxelsAccessor( "localhost:8000", uuid, "my_volume" )
  
 # Read from it
 cutout_array = vol_client.retrieve_subvolume( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
@@ -67,13 +67,13 @@ from mockserver.h5mockserver import H5MockServerDataFile
 
 # Generate a volume to store.
 data = numpy.random.randint( 0, 256, (1,100,200,300) )
-volume_metadata = VolumeMetadata.create_default_metadata( (1,100,200,300), numpy.uint8, 'cxyz', 1.0, "" )
+voxels_metadata = VoxelsMetadata.create_default_metadata( (1,100,200,300), numpy.uint8, 'cxyz', 1.0, "" )
 
 # Create special server datafile with one dataset, with one node.
 # Then add our data volume to it.
 with H5MockServerDataFile( 'mock_storage.h5' ) as server_datafile:
     server_datafile.add_node( 'my_dataset', 'abc123' )
-    server_datafile.add_volume( 'my_dataset', 'my_volume', data_view, volume_metadata )
+    server_datafile.add_volume( 'my_dataset', 'my_volume', data_view, voxels_metadata )
 ```
 
 Once you have a datafile, the server can be started from the command line:

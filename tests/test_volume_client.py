@@ -9,7 +9,7 @@ import h5py
 from dvidclient import voxels
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
-class TestVolumeClient(object):
+class TestVoxelsAccessor(object):
     
     @classmethod
     def setupClass(cls):
@@ -50,12 +50,12 @@ class TestVolumeClient(object):
         cls.data_name = "indices_data"
         cls.volume_location = "/datasets/{dvid_dataset}/volumes/{data_name}".format( **cls.__dict__ )
         cls.node_location = "/datasets/{dvid_dataset}/nodes/{data_uuid}".format( **cls.__dict__ )
-        cls.volume_metadata = voxels.VolumeMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
+        cls.voxels_metadata = voxels.VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
 
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
             test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.volume_metadata )
+            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.voxels_metadata )
 
 
     @classmethod
@@ -77,13 +77,13 @@ class TestVolumeClient(object):
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
         """
         volume_name = 'new_volume'
-        metadata = voxels.VolumeMetadata.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
+        metadata = voxels.VoxelsMetadata.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
         voxels.create_new( self.client_connection, self.data_uuid, volume_name, metadata )
          
         with h5py.File(self.test_filepath, 'r') as f:
             volumes_group = "/datasets/{dvid_dataset}/volumes".format( dvid_dataset=self.dvid_dataset )
             assert volume_name in f[volumes_group], "Volume wasn't created: {}".format( volumes_group + "/" + volume_name )
-            assert voxels.VolumeMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metadata,\
+            assert voxels.VoxelsMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metadata,\
                 "New volume has the wrong metadata"
  
  
@@ -93,7 +93,7 @@ class TestVolumeClient(object):
         """
         # Retrieve from server
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol.get_ndarray( start, stop )
          
         # Compare to file
@@ -119,7 +119,7 @@ class TestVolumeClient(object):
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
  
         # Send to server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         dvid_vol.post_ndarray(start, stop, subvolume)
          
         # Check file
@@ -134,7 +134,7 @@ class TestVolumeClient(object):
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
  
         # Send to server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         dvid_vol[0:4,9:10,5:20,50:150,0:3] = subvolume
          
         # Check file
@@ -149,7 +149,7 @@ class TestVolumeClient(object):
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
  
         # Send to server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         dvid_vol[0:4,9,5:20,50:150,0:3] = subvolume[:,0,...]
          
         # Check file
@@ -157,7 +157,7 @@ class TestVolumeClient(object):
 
     def test_get_full_volume_via_slicing(self):
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume1 = dvid_vol[:]
         start = (0,) * len(self.original_data.shape)
         stop = self.original_data.shape
@@ -172,7 +172,7 @@ class TestVolumeClient(object):
  
     def test_get_full_slicing(self):
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, 5:20, 50:150, 0:3]
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
          
@@ -181,7 +181,7 @@ class TestVolumeClient(object):
      
     def test_get_partial_slicing(self):
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, 5:20, 50:150]
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
         
@@ -190,7 +190,7 @@ class TestVolumeClient(object):
 
     def test_get_ellipsis_slicing(self):
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, ..., 1:2]
         start, stop = (0,9,0,0,1), (4,10,100,200,2)
         
@@ -199,7 +199,7 @@ class TestVolumeClient(object):
 
     def test_get_reduced_dim_slicing(self):
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, 3, :, 1:2] # Note that the third dimension will be dropped...
         start, stop = (0,9,3,0,1), (4,10,4,200,2) 
         
@@ -221,7 +221,7 @@ class TestVolumeClient(object):
         but only the requested subset of channels will be returned.
         """
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[1:3, 9:10, 5:20, 50:150]
         
         # Compare to file
@@ -232,7 +232,7 @@ class TestVolumeClient(object):
         """
         """
         # Retrieve from server
-        dvid_vol = voxels.VolumeClient( self.client_connection, self.data_uuid, self.data_name )
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4:2, 1:10:3, 5:20:5, 50:150:10]
         
         # Compare to file
@@ -272,11 +272,11 @@ class TestVolumeClient(object):
          
         # Create a new remote volume
         uuid = 'abcde'
-        volume_metadata = voxels.VolumeMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
-        voxels.create_new( connection, uuid, "my_volume", volume_metadata )
+        voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
+        voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
 
-        # Use the VolumeClient convenience class to manipulate a particular data volume     
-        vol_client = voxels.VolumeClient( connection, uuid, "my_volume" )
+        # Use the VoxelsAccessor convenience class to manipulate a particular data volume     
+        vol_client = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
          
         # Read from it
         cutout_array = vol_client.get_ndarray( (0,10,20,30), (4,110,120,130) ) # First axis is channel.

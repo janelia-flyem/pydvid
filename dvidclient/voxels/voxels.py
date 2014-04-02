@@ -6,8 +6,8 @@ import numpy
 
 from dvidclient.errors import DvidHttpError, UnexpectedResponseError
 from dvidclient.util import get_json_generic
-from dvidclient.voxels.volume_metadata import VolumeMetadata
-from dvidclient.voxels.volume_codec import VolumeCodec
+from dvidclient.voxels.voxels_metadata import VoxelsMetadata
+from dvidclient.voxels.voxels_nddata_codec import VoxelsNddataCodec
 
 def get_metadata( connection, uuid, data_name ):
     """
@@ -15,17 +15,17 @@ def get_metadata( connection, uuid, data_name ):
     """
     rest_query = "/api/node/{uuid}/{data_name}/metadata".format( uuid=uuid, data_name=data_name )
     parsed_json = get_json_generic( connection, rest_query )
-    return VolumeMetadata( parsed_json )
+    return VoxelsMetadata( parsed_json )
 
-def create_new( connection, uuid, data_name, volume_metadata ):
+def create_new( connection, uuid, data_name, voxels_metadata ):
     """
     Create a new volume in the dvid server.
     """
-    dvid_typename = volume_metadata.determine_dvid_typename()
+    dvid_typename = voxels_metadata.determine_dvid_typename()
     rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
                  "".format( **locals() )
     # TODO: Validate schema
-    metadata_json = volume_metadata.to_json()
+    metadata_json = voxels_metadata.to_json()
     headers = { "Content-Type" : "text/json" }
     connection.request( "POST", rest_query, body=metadata_json, headers=headers )
 
@@ -39,14 +39,14 @@ def create_new( connection, uuid, data_name, volume_metadata ):
             raise UnexpectedResponseError( "Expected an empty response from the DVID server.  "
                                            "Got: {}".format( response_text ) )
 
-def get_ndarray( connection, uuid, data_name, volume_metadata, start, stop ):
-    _validate_query_bounds( start, stop, volume_metadata.shape )
-    codec = VolumeCodec( volume_metadata )
+def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop ):
+    _validate_query_bounds( start, stop, voxels_metadata.shape )
+    codec = VoxelsNddataCodec( voxels_metadata )
     response = get_subvolume_response( connection, uuid, data_name, start, stop )
     with contextlib.closing(response):
         # "Full" roi shape includes channel axis and ALL channels
         full_roi_shape = numpy.array(stop) - start
-        full_roi_shape[0] = volume_metadata.shape[0]
+        full_roi_shape[0] = voxels_metadata.shape[0]
         decoded_data = codec.decode_to_ndarray( response, full_roi_shape )
     
         # Was the response fully consumed?  Check.
@@ -61,13 +61,13 @@ def get_ndarray( connection, uuid, data_name, volume_metadata, start, stop ):
         # Select the requested channels from the returned data.
         return decoded_data
 
-def post_ndarray( connection, uuid, data_name, volume_metadata, start, stop, new_data ):
-    _validate_query_bounds( start, stop, volume_metadata.shape )
-    codec = VolumeCodec( volume_metadata )
+def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new_data ):
+    _validate_query_bounds( start, stop, voxels_metadata.shape )
+    codec = VoxelsNddataCodec( voxels_metadata )
     rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop )
     body_data_stream = StringIO.StringIO()
     codec.encode_from_ndarray(body_data_stream, new_data)
-    headers = { "Content-Type" : VolumeCodec.VOLUME_MIMETYPE }
+    headers = { "Content-Type" : VoxelsNddataCodec.VOLUME_MIMETYPE }
     connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
     with contextlib.closing( connection.getresponse() ) as response:
         if response.status != httplib.NO_CONTENT:

@@ -1,7 +1,7 @@
 import nose
 import numpy
 import h5py
-from dvidclient.voxels import VolumeMetadata
+from dvidclient.voxels import VoxelsMetadata
 
 class TestVolumeInfo( object ):
     metadata_json = """
@@ -42,7 +42,7 @@ class TestVolumeInfo( object ):
     """
 
     def test_parse(self):
-        metadata = VolumeMetadata(self.metadata_json)
+        metadata = VoxelsMetadata(self.metadata_json)
         assert metadata.shape == (3, 100,200,400), "Wrong shape: {}".format( metadata.shape )
         assert metadata.dtype == numpy.uint8
         assert metadata.axiskeys == 'cxyz'
@@ -51,7 +51,7 @@ class TestVolumeInfo( object ):
         assert metadata['Axes'][2]["Resolution"] == 40
     
     def test_create_default_metadata(self):
-        metadata = VolumeMetadata.create_default_metadata( (2,10,11), numpy.int64, "cxy", 1.5, "nanometers" )
+        metadata = VoxelsMetadata.create_default_metadata( (2,10,11), numpy.int64, "cxy", 1.5, "nanometers" )
         metadata["Values"][0]["Label"] = "R"
         metadata["Values"][1]["Label"] = "G"
         
@@ -72,7 +72,7 @@ class TestVolumeInfo( object ):
         except ImportError:
             raise nose.SkipTest
 
-        metadata = VolumeMetadata(self.metadata_json)
+        metadata = VoxelsMetadata(self.metadata_json)
         tags = metadata.create_axistags()
         assert tags['x'].resolution == 3.1
         assert tags['y'].resolution == 3.1
@@ -81,11 +81,11 @@ class TestVolumeInfo( object ):
     
     def test_metainfo_from_h5(self):
         shape = (3, 9, 10, 11)
-        starting_metadata = VolumeMetadata.create_default_metadata( shape, numpy.float32, "cxyz", 1.0, "nanometers" )
+        starting_metadata = VoxelsMetadata.create_default_metadata( shape, numpy.float32, "cxyz", 1.0, "nanometers" )
         f = h5py.File("dummy.h5", mode='w', driver='core', backing_store=False) # In-memory
         dset = f.create_dataset( 'dset', shape=shape, dtype=numpy.float32, chunks=True )
          
-        metadata = VolumeMetadata.create_from_h5_dataset( dset )
+        metadata = VoxelsMetadata.create_from_h5_dataset( dset )
         assert metadata.dtype.type is numpy.float32
         assert metadata.shape == starting_metadata.shape, \
             "Wrong shape: {} vs. {}".format( metadata.shape, starting_metadata.shape )
