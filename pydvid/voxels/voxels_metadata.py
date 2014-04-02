@@ -21,34 +21,41 @@ metadata_schema = pydvid.util.parse_schema( 'voxels_metadata.jsonschema' )
 class VoxelsMetadata(dict):
     """
     A dict subclass for the dvid nd-data metadata response.
-    Also provides the following convenience attributes:
-    
-        dtype: e.g. numpy.uint8
-        shape: The shape of the array, including a prepended 'channel' axis
-        axiskeys: A string representing the indexing order for the volume, e.g. "cxyz".
-                  Note the prepended channel axis.
-                  NOTE: By DVID convention, the axiskeys are generally expressed in fortran order.
+    Also provides the following convenience attributes: ``shape``, ``dtype``, ``axiskeys``
     """
     
     @property
     def shape(self):
+        """
+        Property.  The shape of the remote DVID volume.
+        """
         return self._shape
 
     @property
     def dtype(self):
+        """
+        Property.  The pixel datatype of the remote DVID volume, as a ``numpy.dtype`` object.
+        """
         return self._dtype
 
     @property
     def axiskeys(self):
+        """
+        Property.  
+        A string representing the axis indexing order of the volume, e.g. 'cxyz'
+        Always starts with 'c' (channel).
+        
+        .. note:: By DVID convention, the axiskeys are generally expressed in fortran order.
+        """
         return self._axiskeys
 
     def __init__(self, metadata):
         """
-        Constructor. Three signatures:
-        - VolumeInfo(jsontext)
-        - VolumeInfo(metadata_dict)
+        Constructor.
         
-        The first form parses the given json text, and raises a ValueError if the json can't be parsed.
+        :param metadata: Either a string containing the json text for the DVID metadata, 
+                         or a corresponding dict of metadata (e.g. parsed from the json).
+                         If a string is passed, invalid json will result in a ValueError exception.
         """
         assert isinstance( metadata, (dict, str) ), "Expected metadata to be a dict or json str."
         if isinstance( metadata, str ):
@@ -83,7 +90,7 @@ class VoxelsMetadata(dict):
 
     def to_json(self):
         """
-        Convenience method: dump to json string.
+        Convenience method: dump this metadata to json string (for transmission to DVID).
         """
         # TODO: Validate schema
         return json.dumps(self)
@@ -133,6 +140,12 @@ class VoxelsMetadata(dict):
         return VoxelsMetadata(metadata)
     
     def determine_dvid_typename(self):
+        """
+        Based on the dtype and number of channels for this volume, 
+        determine the datatype name (in DVID terminology).
+        For example, if this volume contains 1-channel uint8 data, 
+        the DVID datatype is 'grayscale8'.
+        """
         typenames = { ('uint8',  1) : 'grayscale8',
                       ('uint32', 1) : 'labels32',
                       ('uint64', 1) : 'labels64',
@@ -150,7 +163,8 @@ class VoxelsMetadata(dict):
     if _have_vigra:
         def create_axistags(self):
             """
-            Generate a vigra.AxisTags object corresponding to this VoxelsMetadata
+            Generate a vigra.AxisTags object corresponding to this VoxelsMetadata.
+            (Requires vigra.)
             """
             tags = vigra.AxisTags()
             tags.insert( 0, vigra.AxisInfo('c', typeFlags=vigra.AxisType.Channels) )
@@ -186,10 +200,13 @@ class VoxelsMetadata(dict):
         def create_from_h5_dataset(cls, dataset):
             """
             Create a VolumeInfo object to describe the given h5 dataset object.
-            dataset: An hdf5 dataset object that meets the following criteria:
-                     - Indexed in F-order
-                     - Has an 'axistags' attribute, produced using vigra.AxisTags.toJSON()
-                     - Has an explicit channel axis
+
+            :param dataset: An hdf5 dataset object that meets the following criteria:\n
+                            * Indexed in F-order
+                            * Has an 'axistags' attribute, produced using vigra.AxisTags.toJSON()
+                            * Has an explicit channel axis
+                     
+            (Requires h5py.)
             """
             dtype = dataset.dtype.type
             shape = dataset.shape

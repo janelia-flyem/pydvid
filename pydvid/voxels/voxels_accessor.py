@@ -8,8 +8,8 @@ class VoxelsAccessor(object):
     """
     def __init__(self, connection, uuid, data_name):
         """
-        uuid: The node uuid
-        data_name: The name of the volume
+        :param uuid: The node uuid
+        :param data_name: The name of the volume
         """
         self.uuid = uuid
         self.data_name = data_name
@@ -39,38 +39,42 @@ class VoxelsAccessor(object):
               but "normal" slicing, including stepping, is supported.
                
         Examples:
-            v = VoxelsAccessor( "localhost:8000", uuid=abc123, data_name='my_3d_rgb_volume' )
-            
-            # The whole thing
-            a = v[:]
-            a = v[...]
-            
-            # Arbitrary slicing
-            a = v[...,10,:]
-            
-            # Note: DVID always returns all channels.
-            #       Here, you are permitted to slice into the channel axis,
-            #       but be aware that this implementation requests all 
-            #       channels and returns the ones you asked for.
-            blue = v[2]
-            
-            # Therefore, avoid this, since it results in 2 requests for the same data
-            red = v[0]
-            green = v[1]
-            
-            # Instead, do this:
-            rgb = v[:]
-            red, green, blue = rgb[0], rgb[1], rgb[2]
-            
-            # Similarly, you are permitted to use slices with steps, but be aware that 
-            # the entire bounding volume will be requested, and the sliced steps will be 
-            # extracted from the dense volume.
-            
-            # Extract the upper-left 10x10 tile of every other z-slice:
-            a = v[:,:10,:10,::2]
+        
+            .. code-block:: python            
 
-            # The above is equivalent to this:
-            a = v[:,:10,:10,:][...,::2]            
+                connection = httplib.HTTPConnection( "localhost:8000" ) 
+                v = VoxelsAccessor( connection, uuid=abc123, data_name='my_3d_rgb_volume' )
+
+                # The whole thing
+                a = v[:]
+                a = v[...]
+                
+                # Arbitrary slicing
+                a = v[...,10,:]
+                
+                # Note: DVID always returns all channels.
+                #       Here, you are permitted to slice into the channel axis,
+                #       but be aware that this implementation requests all 
+                #       channels and returns the ones you asked for.
+                blue = v[2]
+                
+                # Therefore, avoid this, since it results in 2 requests for the same data
+                red = v[0]
+                green = v[1]
+                
+                # Instead, do this:
+                rgb = v[:]
+                red, green, blue = rgb[0], rgb[1], rgb[2]
+                
+                # Similarly, you are permitted to use slices with steps, but be aware that 
+                # the entire bounding volume will be requested, and the sliced steps will be 
+                # extracted from the dense volume.
+                
+                # Extract the upper-left 10x10 tile of every other z-slice:
+                a = v[:,:10,:10,::2]
+    
+                # The above is equivalent to this:
+                a = v[:,:10,:10,:][...,::2]            
         """
         shape = self.voxels_metadata.shape
         expanded_slicing = VoxelsAccessor._expand_slicing(slicing, shape)
@@ -93,16 +97,20 @@ class VoxelsAccessor(object):
             That is, you must include all channels, and your slices may not include a step size.
         
         Examples:
-            v = VoxelsAccessor( "localhost:8000", uuid=abc123, data_name='my_3d_rgb_volume' )
+
+            .. code-block:: python            
+
+                connection = httplib.HTTPConnection( "localhost:8000" ) 
+                v = VoxelsAccessor( connection, uuid=abc123, data_name='my_3d_rgb_volume' )
             
-            # Overwrite the third z-slice
-            v[...,2] = a
-            
-            # Forbidden: attempt to stepped slices
-            v[...,0:10:2] = a # Error!
-            
-            # Forbidden: attempt to write only a subset of channels (the first axis)
-            v[1,...] = green_data # Error!
+                # Overwrite the third z-slice
+                v[...,2] = a
+                
+                # Forbidden: attempt to stepped slices
+                v[...,0:10:2] = a # Error!
+                
+                # Forbidden: attempt to write only a subset of channels (the first axis)
+                v[1,...] = green_data # Error!
         """
         shape = self.voxels_metadata.shape
         full_slicing = VoxelsAccessor._expand_slicing(slicing, shape)
