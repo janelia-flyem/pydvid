@@ -22,6 +22,31 @@ class VoxelsAccessor(object):
         # Request this volume's metadata from DVID
         self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
 
+    @property
+    def shape(self):
+        """
+        Property.  The shape of the remote DVID volume.
+        """
+        return self.voxels_metadata.shape
+
+    @property
+    def dtype(self):
+        """
+        Property.  The pixel datatype of the remote DVID volume, as a ``numpy.dtype`` object.
+        """
+        return self.voxels_metadata.dtype
+
+    @property
+    def axiskeys(self):
+        """
+        Property.  
+        A string representing the axis indexing order of the volume, e.g. 'cxyz'
+        Always starts with 'c' (channel).
+        
+        .. note:: By DVID convention, the axiskeys are expressed in fortran order.
+        """
+        return self.voxels_metadata.axiskeys
+
     def get_ndarray( self, start, stop ):
         """
         Request the subvolume specified by the given start and stop pixel coordinates.
