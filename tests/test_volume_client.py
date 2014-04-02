@@ -6,7 +6,7 @@ import httplib
 import numpy
 import h5py
 
-from dvidclient import voxels, general
+from dvidclient import voxels
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
 
 class TestVolumeClient(object):
