@@ -26,9 +26,9 @@ Internally, your hdf5 file must be a hierarchy, with symlinks for easy access to
     /def456 -> /datasets/dataset_name1/nodes/def456
 
 Furthermore, each hdf5 volume must:
-- include a channel axis
-- have an "axistags" attribute as produced by `vigra.AxisTags.toJSON()`
-- be in C-order, e.g. zyxc
+- include a channel axis, which must be the first axis
+- have a "metadata" attribute, which is stored as json according to the dvid metadata schema
+- be in F-order, e.g. cxyz
 
 LIMITATIONS:
 Obviously, the aim here is not to implement the full DVID API.
@@ -41,16 +41,16 @@ Obviously, the aim here is not to implement the full DVID API.
 import re
 import json
 import httplib
+import collections
 import threading
 import multiprocessing
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 import numpy
 import h5py
-import vigra
 
-from dvidclient.volume_metainfo import MetaInfo
-from dvidclient.volume_codec import VolumeCodec
+from pydvid.voxels import VoxelsMetadata
+from pydvid.voxels import VoxelsNddataCodec
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
@@ -102,9 +102,10 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # Parameter patterns
         param_patterns = { 'uuid'     : r"[0-9a-fA-F]+",
                            'shape'    : r"(\d+_)*\d+",
-                           'offset'   : r"(\d+_)*\d+", # (Same as shape)
+                           'offset'   : r"(\d+_)*\d+",
                            'dims'     : r"(\d_)*\d",
                            'dataname' : r"\w+",
+                           'key'      : r"\w+",
                            'typename' : r"\w+" }
         
         # Surround each pattern with 'named group' regex syntax
@@ -113,12 +114,18 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             named_param_patterns[name] = "(?P<" + name + ">" + pattern + ")" 
 
         # Supported REST command formats -> methods and handlers
-        rest_cmds = { "^/api/datasets/info$" :                                      { "GET"  : self._do_get_datasets_info },
-                      "^/api/node/{uuid}/{dataname}/schema$" :                      { "GET"  : self._do_get_volume_schema },
-                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :           { "POST" : self._do_create_volume },
-                      "^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
-                                                                                      "POST" : self._do_modify_data }
-                    }
+        # Note that order matters here
+        rest_cmds = collections.OrderedDict([ ("^/api/server/info",                                          { "GET"  : self._do_get_server_info }),
+                                              ("^/api/server/types",                                         { "GET"  : self._do_get_server_types }),
+                                              ("^/api/datasets/list$",                                       { "GET"  : self._do_get_datasets_list }),
+                                              ("^/api/datasets/info$",                                       { "GET"  : self._do_get_datasets_info }),
+                                              ("^/api/node/{uuid}/{dataname}/metadata",                      { "GET"  : self._do_get_volume_schema }),
+                                              ("^/api/dataset/{uuid}/new/{typename}/{dataname}$",            { "POST" : self._do_create_new_data }),
+                                              ("^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$",  { "GET"  : self._do_get_data,
+                                                                                                               "POST" : self._do_modify_data }),
+                                              ("^/api/node/{uuid}/{dataname}/{key}$" ,                       { "GET"  : self._do_get_keyvalue,
+                                                                                                               "POST" : self._do_set_keyvalue })
+                                          ])
 
         # Find the matching rest command and execute the handler.
         for rest_cmd_format, cmd_methods in rest_cmds.items():
@@ -139,62 +146,74 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # We couldn't find a command for the user's query.
         raise self.RequestError( httplib.BAD_REQUEST, "Bad query syntax: {}".format( self.path ) )
 
+    def _do_get_server_info(self):
+        server_info = {
+          "Cores": "1",
+          "DVID datastore": "0.0",
+          "Maximum Cores": "1",
+          "Server uptime": "0.12345",
+          "Storage backend": "hdf5",
+          "Storage driver": "github.com/stuarteberg/pydvid/mockserver/h5mockserver.py"
+        }
+        json_text = json.dumps( server_info )
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
+    
+    def _do_get_server_types(self):
+        server_types = {
+          "grayscale8": "github.com/janelia-flyem/dvid/datatype/voxels/grayscale8.go",
+          "keyvalue": "github.com/janelia-flyem/dvid/datatype/keyvalue",
+          "labelmap": "github.com/janelia-flyem/dvid/datatype/labelmap",
+          "labels64": "github.com/janelia-flyem/dvid/datatype/labels64",
+          "multichan16": "github.com/janelia-flyem/dvid/datatype/multichan16",
+          "quadtree": "github.com/janelia-flyem/dvid/datatype/quadtree",
+          "rgba8": "github.com/janelia-flyem/dvid/datatype/voxels/rgba8.go"
+        }
+        json_text = json.dumps( server_types )
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
     
     def _do_get_datasets_info(self):
         """
         Respond to the query for dataset info.
-        Note: For the purposes of this mock server, only a 
-              subset of the json fields are provided here.
-              Furthermore the "DAG" is just the alphabetized uuids.
-        
-        API Notes:  - Parents and children should be lists, and if there is no parent/child at a node, it should be represented with [], not null
         """
         # Dataset info is determined by the layout/attributes of the server's hdf5 file.
         # See the docstring above for details.
-        info = {}
-        datasets = info["Datasets"] = []
-        
-        h5file = self.server.h5_file
-        for dataset_index, (dataset_name, dataset_group) in enumerate(sorted(h5file['datasets'].items())):
-            uuids = sorted( dataset_group["nodes"].keys() ) 
-            datasets.append( {} )
-            dset_info = datasets[-1]
-            dset_info["Root"] = uuids[0]
-            dset_info["Nodes"] = {}
-            dset_info["DatasetID"] = dataset_index
-            dset_info["Alias"] = dataset_name
-            for node_index, uuid in enumerate(uuids):
-                # Don't bother with most node info fields
-                dset_info["Nodes"][uuid] = { "GlobalID" : uuid }
-                
-                # Assign a single parent/child for each node,
-                # except first/last
-                if node_index == 0:
-                    dset_info["Nodes"][uuid]["Parents"] = [] # TODO: Fix DVID API
-                else:
-                    dset_info["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
-
-                if node_index == len(uuids)-1:
-                    dset_info["Nodes"][uuid]["Children"] = [] # TODO: Fix DVID API
-                else:
-                    dset_info["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
-            
-            datamap = dset_info["DataMap"] = {}
-            volumes_group = 'datasets/{dataset_name}/volumes'.format( **locals() )
-            for data_name, h5volume in sorted(h5file[volumes_group].items()):
-                datamap[data_name] = {}
-                datamap[data_name]["Name"] = data_name
-                # TODO: Other fields...
-        
+        info = self._get_datasets_info_dict()
         json_text = json.dumps( info )
         self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
         self.send_header("Content-length", str(len(json_text)))
         self.end_headers()
         self.wfile.write( json_text )
-            
-         
-    def _do_create_volume(self, uuid, typename, dataname):
+
+
+    def _do_get_datasets_list(self):
+        datasets_info = self._get_datasets_info_dict()
+        
+        roots = []
+        for d in datasets_info["Datasets"]:
+            roots.append( d["Root"] )
+
+        data = {}
+        data["DatasetsUUID"] = roots
+        data["NewDatasetID"] = len(roots)
+        json_text = json.dumps( data )
+        
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
+        
+
+    def _do_create_new_data(self, uuid, typename, dataname):
         """
         The http client wants to create a new volume.
         Create it.
@@ -216,36 +235,47 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         if volume_path in self.server.h5_file:
             raise self.RequestError( httplib.CONFLICT,
-                                     "Cannot create.  Volume {} already exists.".format( volume_path ) )
+                                     "Cannot create.  Data '{}' already exists.".format( volume_path ) )
 
-        # Must read exact bytes.
-        # Apparently rfile.read() just hangs.
-        body_len = self.headers.get("Content-Length")
-        metainfo_json = self.rfile.read( int(body_len) )
-        try:
-            metainfo = MetaInfo.create_from_json( metainfo_json )
-        except ValueError as ex:
-            raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
-                                     'Error parsing volume description: {}\n'
-                                     'Invalid description text was:\n{}'
-                                     ''.format( ex.args[0], metainfo_json ) )
-        expected_typename = metainfo.determine_dvid_typename()
-        if typename != expected_typename:
-            raise self.RequestError( httplib.BAD_REQUEST,
-                                     "Cannot create volume.  "
-                                     "REST typename was {}, but metainfo JSON implies typename {}"
-                                     "".format( typename, expected_typename ) )
-
-        # Create the new volume in the appropriate 'volumes' group,
-        #  and then link to it in the node group.
-        metainfo.create_empty_h5_dataset( self.server.h5_file, volume_path )
-        linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
-        self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
-        self.server.h5_file.flush()
+        if typename == 'keyvalue':
+            # Create the new group in the appropriate 'volumes' group,
+            #  and then link to it in the node group.
+            self.server.h5_file.create_group( volume_path )
+            linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
+            self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
+            self.server.h5_file.flush()
+        else:
+            self._create_volume( dataset_name, uuid, dataname, volume_path, typename )
 
         self.send_response(httplib.NO_CONTENT)
         self.send_header("Content-length", "0" )
         self.end_headers()
+
+    def _create_volume( self, dataset_name, uuid, dataname, volume_path, typename ):
+        # Must read exact bytes.
+        # Apparently rfile.read() just hangs.
+        body_len = self.headers.get("Content-Length")
+        metadata_json = self.rfile.read( int(body_len) )
+        try:
+            voxels_metadata = VoxelsMetadata( metadata_json )
+        except ValueError as ex:
+            raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
+                                     'Error parsing volume metadata: {}\n'
+                                     'Invalid metadata response body was:\n{}'
+                                     ''.format( ex.args[0], metadata_json ) )
+        expected_typename = voxels_metadata.determine_dvid_typename()
+        if typename != expected_typename:
+            raise self.RequestError( httplib.BAD_REQUEST,
+                                     "Cannot create volume.  "
+                                     "REST typename was {}, but metadata JSON implies typename {}"
+                                     "".format( typename, expected_typename ) )
+
+        # Create the new volume in the appropriate 'volumes' group,
+        #  and then link to it in the node group.
+        self.server.h5_file.create_dataset( volume_path, shape=voxels_metadata.shape, dtype=voxels_metadata.dtype )
+        linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
+        self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
+        self.server.h5_file.flush()
 
 
     def _do_get_volume_schema(self, uuid, dataname):
@@ -253,8 +283,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Respond to a query for dataset info.
         """
         dataset = self._get_h5_dataset(uuid, dataname)
-        metainfo = MetaInfo.create_from_h5_dataset(dataset)
-        json_text = metainfo.format_to_json()
+        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+        json_text = json.dumps( voxels_metadata )
 
         self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
@@ -271,23 +301,21 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         """
         dataset = self._get_h5_dataset(uuid, dataname)
         roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
-        slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
+        # Prepend channel slicing
+        slicing = (slice(None),) + tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
         
-        # Reverse here because API uses fortran order, but data is stored in C-order
-        data = dataset[tuple(reversed(slicing))]
-        axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
-        v_array = vigra.taggedView( data, axistags )
+        data = dataset[slicing]
         
-        metainfo = MetaInfo.create_from_h5_dataset(dataset)
-        codec = VolumeCodec( metainfo )
+        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+        codec = VoxelsNddataCodec( voxels_metadata )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
         self.send_response(httplib.OK)
-        self.send_header("Content-type", VolumeCodec.VOLUME_MIMETYPE)
+        self.send_header("Content-type", VoxelsNddataCodec.VOLUME_MIMETYPE)
         self.send_header("Content-length", str(buffer_len) )
         self.end_headers()
 
-        codec.encode_from_vigra_array( self.wfile, v_array.transpose() )
+        codec.encode_from_ndarray( self.wfile, data )
     
 
     def _do_modify_data(self, uuid, dataname, dims, shape, offset):
@@ -300,22 +328,91 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
         # Prepend channel to make "full" roi
         full_roi_start = (0,) + roi_start
-        full_roi_stop = (dataset.shape[-1],) + roi_stop
+        full_roi_stop = (dataset.shape[0],) + roi_stop
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
         
-        metainfo = MetaInfo.create_from_h5_dataset(dataset)
-        codec = VolumeCodec( metainfo )
-        v_array = codec.decode_to_vigra_array(self.rfile, full_roi_shape)
+        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+        codec = VoxelsNddataCodec( voxels_metadata )
+        data = codec.decode_to_ndarray(self.rfile, full_roi_shape)
 
-        # Reverse here because API uses fortran order, but data is stored in C-order
-        dataset[tuple(reversed(slicing))] = v_array.transpose()
+        dataset[slicing] = data
         self.server.h5_file.flush()
 
         self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
         self.send_header("Content-length", 0 )
         self.end_headers()
     
+
+    def _do_get_keyvalue(self, uuid, dataname, key):
+        """
+        Retrieve the value for the given key from the node/data given by 
+        uuid/dataname, which must be of the keyvalue datatype.
+        """
+        if uuid not in self.server.h5_file["all_nodes"]:
+            raise self.RequestError( httplib.NOT_FOUND, "No such node with uuid {}".format( uuid ) )
+        
+        # Find the dataset that owns this node.
+        volume_path = None
+        for dataset_name, dataset_group in self.server.h5_file['datasets'].items():
+            for node_uuid, node_group in dataset_group['nodes'].items():
+                if node_uuid == uuid:
+                    volume_path = '/datasets/{dataset_name}/volumes/{dataname}'.format( **locals() )
+                    break
+
+        if volume_path is None:
+            raise self.RequestError( httplib.NOT_FOUND,
+                                     "Can't access keyvalue store.  Can't find node volumes dir in server hdf5 file." )
+
+        keyvalue_group = self.server.h5_file[volume_path]
+
+        if key not in keyvalue_group:
+            raise self.RequestError( httplib.NOT_FOUND, "Data '{}' has no value for key '{}'".format( dataname, key ) )
+
+        binary_data = keyvalue_group[key][()]
+
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "application/octet")
+        self.send_header("Content-length", str(len(binary_data)))
+        self.end_headers()
+        self.wfile.write( binary_data )
+
+    def _do_set_keyvalue(self, uuid, dataname, key):
+        """
+        Set the value for the given key from the node/data given by 
+        uuid/dataname, which must be of the keyvalue datatype.
+        """
+        if uuid not in self.server.h5_file["all_nodes"]:
+            raise self.RequestError( httplib.NOT_FOUND, "No such node with uuid {}".format( uuid ) )
+        
+        # Find the dataset that owns this node.
+        volume_path = None
+        for dataset_name, dataset_group in self.server.h5_file['datasets'].items():
+            for node_uuid, node_group in dataset_group['nodes'].items():
+                if node_uuid == uuid:
+                    volume_path = '/datasets/{dataset_name}/volumes/{dataname}'.format( **locals() )
+                    break
+
+        if volume_path is None:
+            raise self.RequestError( httplib.NOT_FOUND,
+                                     "Can't access keyvalue store.  Can't find node volumes dir in server hdf5 file." )
+
+        keyvalue_group = self.server.h5_file[volume_path]
+
+        # Prepare to overwrite
+        if key in keyvalue_group:
+            del keyvalue_group[key]
+
+        # Must read exact bytes.
+        # Apparently rfile.read() just hangs.
+        body_len = self.headers.get("Content-Length")
+        binary_data = self.rfile.read( int(body_len) )
+        keyvalue_group.create_dataset(key, data=binary_data) 
+
+        self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
+        self.send_header("Content-length", 0 )
+        self.end_headers()
+
 
     def _get_h5_dataset(self, uuid, dataname):
         """
@@ -360,6 +457,58 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )
         return roi_start, roi_stop
+
+    def _get_datasets_info_dict(self):
+        """
+        Generate the data that will be sent in response to the /api/datasets/info request.
+        
+        Note: For the purposes of this mock server, only a 
+              subset of the json fields are provided here.
+              Furthermore the "DAG" is just the alphabetized uuids.
+        
+        API Notes:  - Parents and children should be lists, and if 
+                      there is no parent/child at a node, 
+                      it should be represented with [], not null
+        """
+        info = {}
+        datasets = info["Datasets"] = []
+        
+        h5file = self.server.h5_file
+        for dataset_index, (dataset_name, dataset_group) in enumerate(sorted(h5file['datasets'].items())):
+            uuids = sorted( dataset_group["nodes"].keys() ) 
+            datasets.append( {} )
+            dset_info = datasets[-1]
+            dset_info["Root"] = uuids[0]
+            dset_info["Nodes"] = {}
+            dset_info["DatasetID"] = dataset_index
+            dset_info["Alias"] = dataset_name
+            for node_index, uuid in enumerate(uuids):
+                # Don't bother with most node info fields
+                dset_info["Nodes"][uuid] = { "GlobalID" : uuid,
+                                             "VersionID" : 0,
+                                             "Locked" : False,
+                                             "Created" : "1999-12-12",
+                                             "Updated" : "2000-01-01" }
+                
+                # Assign a single parent/child for each node,
+                # except first/last
+                if node_index == 0:
+                    dset_info["Nodes"][uuid]["Parents"] = [] # TODO: Fix DVID API
+                else:
+                    dset_info["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
+
+                if node_index == len(uuids)-1:
+                    dset_info["Nodes"][uuid]["Children"] = [] # TODO: Fix DVID API
+                else:
+                    dset_info["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
+            
+            datamap = dset_info["DataMap"] = {}
+            volumes_group = 'datasets/{dataset_name}/volumes'.format( **locals() )
+            for data_name, h5volume in sorted(h5file[volumes_group].items()):
+                datamap[data_name] = {}
+                datamap[data_name]["Name"] = data_name
+                # TODO: Other fields...
+        return info
 
     def log_request(self, *args, **kwargs):
         """
@@ -461,19 +610,37 @@ class H5MockServerDataFile(object):
         if 'all_nodes' not in self._f:
             self._f.create_group('all_nodes')
 
-    def add_volume(self, dataset_name, volume_name, volume):
-        assert isinstance( volume, vigra.VigraArray )
-        assert volume.axistags[-1].key == 'c'
+    def add_keyvalue_group(self, dataset_name, data_name):
+        volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
+
+        # Create the group (i.e. the keyvalue store)
+        volumes_group.create_group( data_name )
+        
+        # Add a link to this volume in every node
+        for node in nodes_group.values():
+            node[data_name] = h5py.SoftLink( volumes_group.name + '/' + data_name )
+
+        self._f.flush()
+
+    def add_volume(self, dataset_name, volume_name, volume, voxels_metadata):
+        assert isinstance( volume, numpy.ndarray )
 
         volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
 
-        # Save the volume
+        # Save the volume.
+        # TODO: For simplicity, we store the volume as-is, 
+        #        despite the fact that h5py uses C-order and DVID uses F-order
+        #       If we were using this mock server for more than just testing, 
+        #        we would transpose to C-order before storing data and transpose 
+        #        back to F-order when retrieving data.
         volume_dset = volumes_group.create_dataset( volume_name, data=volume )
-        volume_dset.attrs['axistags'] = volume.axistags.toJSON()
+        volume_dset.attrs['dvid_metadata'] = json.dumps( voxels_metadata )
         
         # Add a link to this volume in every node
         for node in nodes_group.values():
             node[volume_name] = h5py.SoftLink( volumes_group.name + '/' + volume_name )
+
+        self._f.flush()
     
     def add_node(self, dataset_name, node_uuid):
         volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
@@ -488,6 +655,8 @@ class H5MockServerDataFile(object):
         for volume_name in volumes_group.keys():
             node[volume_name] = h5py.SoftLink( volumes_group.name + '/' + volume_name )
 
+        self._f.flush()
+        
     def _get_dataset_groups(self, dataset_name):
         # Make dataset if necessary
         dataset_path = '/datasets/' + dataset_name
