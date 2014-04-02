@@ -16,7 +16,7 @@ def get_datasets_info( connection ):
     """
     Return the json data provided by the ``/api/datasets/info`` DVID call.
     """
-    return get_json_generic( connection, "/api/datasets/info" ) #, schema='server_info.jsonschema' )
+    return get_json_generic( connection, "/api/datasets/info", schema='datasets_info.jsonschema' )
 
 def get_datasets_list(connection):
     """
