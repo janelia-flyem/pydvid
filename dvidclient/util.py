@@ -1,22 +1,42 @@
+import os
 import json
 import httplib
 import contextlib
-from dvidclient.errors import DvidHttpError
+
+import jsonschema
+
+import dvidclient
 
 def get_json_generic( connection, resource_path, schema=None ):
+    """
+    Request the json data found at the given resource path, e.g. '/api/datasets/info'
+    If schema is a dict, validate the response against it.
+    If schema is a str, it should be the name of a schema file found in dvidclient/schemas.
+    """
     connection.request( "GET", resource_path )
     with contextlib.closing( connection.getresponse() ) as response:
         if response.status != httplib.OK:
-            raise DvidHttpError( 
+            raise dvidclient.errors.DvidHttpError( 
                 "requesting json for: {}".format( resource_path ),
                 response.status, response.reason, response.read(),
                 "GET", resource_path, "")
         
         try:
-            datasets_info = json.loads( response.read() )
+            parsed_response = json.loads( response.read() )
         except ValueError as ex:
             raise Exception( "Couldn't parse the dataset info response as json:\n"
                              "{}".format( ex.args ) )
         
-        # TODO: Schema validation
-        return datasets_info
+        if schema:
+            if isinstance( schema, str ):
+                schema = parse_schema( schema )
+            assert isinstance( schema, dict )
+            jsonschema.validate( schema, parsed_response )
+
+        return parsed_response
+
+def parse_schema( schema_filename ):
+    schema_dir = os.path.join( os.path.dirname(dvidclient.__file__), 'dvidschemas' )
+    schema_path = os.path.join( schema_dir, schema_filename )
+    with open( schema_path ) as schema_file:
+        return json.load( schema_file )

@@ -71,14 +71,7 @@ class TestVolumeClient(object):
         """
         return H5MockServer.create_and_start( h5filepath, "localhost", 8000, same_process, disable_server_logging )
     
-    def test_query_datasets_info(self):
-        info = general.get_datasets_info( self.client_connection )
-        assert info["Datasets"][0]["Root"] == "abcde"
-        assert info["Datasets"][0]["Nodes"]["abcde"]["Parents"] == []
-        assert info["Datasets"][0]["Nodes"]["abcde"]["Children"] == []
-        assert info["Datasets"][0]["DataMap"][self.data_name]["Name"] == self.data_name
-        
-    
+
     def test_create_volume(self):
         """
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
