@@ -112,7 +112,10 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             named_param_patterns[name] = "(?P<" + name + ">" + pattern + ")" 
 
         # Supported REST command formats -> methods and handlers
-        rest_cmds = { "^/api/datasets/info$" :                                      { "GET"  : self._do_get_datasets_info },
+        rest_cmds = { "^/api/server/info" :                                         { "GET"  : self._do_get_server_info },
+                      "^/api/server/types" :                                        { "GET"  : self._do_get_server_types },
+                      "^/api/datasets/list$" :                                      { "GET"  : self._do_get_datasets_list },
+                      "^/api/datasets/info$" :                                      { "GET"  : self._do_get_datasets_info },
                       "^/api/node/{uuid}/{dataname}/metadata":                      { "GET"  : self._do_get_volume_schema },
                       "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :           { "POST" : self._do_create_volume },
                       "^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
@@ -138,61 +141,73 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # We couldn't find a command for the user's query.
         raise self.RequestError( httplib.BAD_REQUEST, "Bad query syntax: {}".format( self.path ) )
 
+    def _do_get_server_info(self):
+        server_info = {
+          "Cores": "1",
+          "DVID datastore": "0.0",
+          "Maximum Cores": "1",
+          "Server uptime": "0.12345",
+          "Storage backend": "hdf5",
+          "Storage driver": "github.com/stuarteberg/dvidclient/mockserver/h5mockserver.py"
+        }
+        json_text = json.dumps( server_info )
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
+    
+    def _do_get_server_types(self):
+        server_types = {
+          "grayscale8": "github.com/janelia-flyem/dvid/datatype/voxels/grayscale8.go",
+          "keyvalue": "github.com/janelia-flyem/dvid/datatype/keyvalue",
+          "labelmap": "github.com/janelia-flyem/dvid/datatype/labelmap",
+          "labels64": "github.com/janelia-flyem/dvid/datatype/labels64",
+          "multichan16": "github.com/janelia-flyem/dvid/datatype/multichan16",
+          "quadtree": "github.com/janelia-flyem/dvid/datatype/quadtree",
+          "rgba8": "github.com/janelia-flyem/dvid/datatype/voxels/rgba8.go"
+        }
+        json_text = json.dumps( server_types )
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
     
     def _do_get_datasets_info(self):
         """
         Respond to the query for dataset info.
-        Note: For the purposes of this mock server, only a 
-              subset of the json fields are provided here.
-              Furthermore the "DAG" is just the alphabetized uuids.
-        
-        API Notes:  - Parents and children should be lists, and if there is no parent/child at a node, it should be represented with [], not null
         """
         # Dataset info is determined by the layout/attributes of the server's hdf5 file.
         # See the docstring above for details.
-        info = {}
-        datasets = info["Datasets"] = []
-        
-        h5file = self.server.h5_file
-        for dataset_index, (dataset_name, dataset_group) in enumerate(sorted(h5file['datasets'].items())):
-            uuids = sorted( dataset_group["nodes"].keys() ) 
-            datasets.append( {} )
-            dset_info = datasets[-1]
-            dset_info["Root"] = uuids[0]
-            dset_info["Nodes"] = {}
-            dset_info["DatasetID"] = dataset_index
-            dset_info["Alias"] = dataset_name
-            for node_index, uuid in enumerate(uuids):
-                # Don't bother with most node info fields
-                dset_info["Nodes"][uuid] = { "GlobalID" : uuid }
-                
-                # Assign a single parent/child for each node,
-                # except first/last
-                if node_index == 0:
-                    dset_info["Nodes"][uuid]["Parents"] = [] # TODO: Fix DVID API
-                else:
-                    dset_info["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
-
-                if node_index == len(uuids)-1:
-                    dset_info["Nodes"][uuid]["Children"] = [] # TODO: Fix DVID API
-                else:
-                    dset_info["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
-            
-            datamap = dset_info["DataMap"] = {}
-            volumes_group = 'datasets/{dataset_name}/volumes'.format( **locals() )
-            for data_name, h5volume in sorted(h5file[volumes_group].items()):
-                datamap[data_name] = {}
-                datamap[data_name]["Name"] = data_name
-                # TODO: Other fields...
-        
+        info = self._get_datasets_info_dict()
         json_text = json.dumps( info )
         self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
         self.send_header("Content-length", str(len(json_text)))
         self.end_headers()
         self.wfile.write( json_text )
-            
-         
+
+
+    def _do_get_datasets_list(self):
+        datasets_info = self._get_datasets_info_dict()
+        
+        roots = []
+        for d in datasets_info["Datasets"]:
+            roots.append( d["Root"] )
+
+        data = {}
+        data["DatasetsUUID"] = roots
+        data["NewDatasetID"] = len(roots)
+        json_text = json.dumps( data )
+        
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()
+        self.wfile.write( json_text )
+        
+
     def _do_create_volume(self, uuid, typename, dataname):
         """
         The http client wants to create a new volume.
@@ -356,6 +371,54 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )
         return roi_start, roi_stop
+
+    def _get_datasets_info_dict(self):
+        """
+        Generate the data that will be sent in response to the /api/datasets/info request.
+        
+        Note: For the purposes of this mock server, only a 
+              subset of the json fields are provided here.
+              Furthermore the "DAG" is just the alphabetized uuids.
+        
+        API Notes:  - Parents and children should be lists, and if 
+                      there is no parent/child at a node, 
+                      it should be represented with [], not null
+        """
+        info = {}
+        datasets = info["Datasets"] = []
+        
+        h5file = self.server.h5_file
+        for dataset_index, (dataset_name, dataset_group) in enumerate(sorted(h5file['datasets'].items())):
+            uuids = sorted( dataset_group["nodes"].keys() ) 
+            datasets.append( {} )
+            dset_info = datasets[-1]
+            dset_info["Root"] = uuids[0]
+            dset_info["Nodes"] = {}
+            dset_info["DatasetID"] = dataset_index
+            dset_info["Alias"] = dataset_name
+            for node_index, uuid in enumerate(uuids):
+                # Don't bother with most node info fields
+                dset_info["Nodes"][uuid] = { "GlobalID" : uuid }
+                
+                # Assign a single parent/child for each node,
+                # except first/last
+                if node_index == 0:
+                    dset_info["Nodes"][uuid]["Parents"] = [] # TODO: Fix DVID API
+                else:
+                    dset_info["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
+
+                if node_index == len(uuids)-1:
+                    dset_info["Nodes"][uuid]["Children"] = [] # TODO: Fix DVID API
+                else:
+                    dset_info["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
+            
+            datamap = dset_info["DataMap"] = {}
+            volumes_group = 'datasets/{dataset_name}/volumes'.format( **locals() )
+            for data_name, h5volume in sorted(h5file[volumes_group].items()):
+                datamap[data_name] = {}
+                datamap[data_name]["Name"] = data_name
+                # TODO: Other fields...
+        return info
 
     def log_request(self, *args, **kwargs):
         """
