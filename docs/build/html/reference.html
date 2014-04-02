@@ -1,0 +1,175 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API Reference &mdash; pydvid 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="pydvid 0.1 documentation" href="index.html" />
+    <link rel="next" title="JSON Schema Repo" href="maintenance.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="maintenance.html" title="JSON Schema Repo"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="quickstart.html" title="Quickstart"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="general">
+<span id="id1"></span><h2>general<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All functions in this module can be used directly from the <tt class="docutils literal"><span class="pre">pydvid.general</span></tt> namespace, e.g. <tt class="docutils literal"><span class="pre">pydvid.general.get_server_info()</span></tt></p>
+</div>
+</div>
+<div class="section" id="keyvalue">
+<h2>keyvalue<a class="headerlink" href="#keyvalue" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All functions in this module can be used directly from the <tt class="docutils literal"><span class="pre">pydvid.keyvalue</span></tt> namespace, e.g. <tt class="docutils literal"><span class="pre">pydvid.keyvalue.get_value(...)</span></tt></p>
+</div>
+<span class="target" id="module-pydvid.keyvalue.keyvalue"></span><dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.create_new">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">create_new</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#create_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.create_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new keyvalue table in the dvid server.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.get_value">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request the value for the given key and return the whole thing.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.get_value_response">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value_response</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#get_value_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request the value for the given key return the raw HTTPResponse object.
+The caller may opt to &#8216;stream&#8217; the data from the response instead of reading it all at once.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.put_value">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">put_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#put_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.put_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Store the given value to the keyvalue data.
+value should be either str or a file-like object with fileno() and read() methods.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="voxels">
+<h2>voxels<a class="headerlink" href="#voxels" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All members of this module can be used directly from the <tt class="docutils literal"><span class="pre">pydvid.voxels</span></tt> namespace, e.g. <tt class="docutils literal"><span class="pre">pydvid.voxels.VoxelsAccessor</span></tt></p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#general">general</a></li>
+<li><a class="reference internal" href="#keyvalue">keyvalue</a></li>
+<li><a class="reference internal" href="#voxels">voxels</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="quickstart.html"
+                        title="previous chapter">Quickstart</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="maintenance.html"
+                        title="next chapter">JSON Schema Repo</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/reference.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="maintenance.html" title="JSON Schema Repo"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="quickstart.html" title="Quickstart"
+             >previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
