@@ -101,9 +101,10 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # Parameter patterns
         param_patterns = { 'uuid'     : r"[0-9a-fA-F]+",
                            'shape'    : r"(\d+_)*\d+",
-                           'offset'   : r"(\d+_)*\d+", # (Same as shape)
+                           'offset'   : r"(\d+_)*\d+",
                            'dims'     : r"(\d_)*\d",
                            'dataname' : r"\w+",
+                           'key'      : r"\w+",
                            'typename' : r"\w+" }
         
         # Surround each pattern with 'named group' regex syntax
@@ -117,9 +118,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                       "^/api/datasets/list$" :                                      { "GET"  : self._do_get_datasets_list },
                       "^/api/datasets/info$" :                                      { "GET"  : self._do_get_datasets_info },
                       "^/api/node/{uuid}/{dataname}/metadata":                      { "GET"  : self._do_get_volume_schema },
-                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :           { "POST" : self._do_create_volume },
+                      "^/api/dataset/{uuid}/new/{typename}/{dataname}$" :           { "POST" : self._do_create_new_data },
                       "^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}$" : { "GET"  : self._do_get_data,
-                                                                                      "POST" : self._do_modify_data }
+                                                                                      "POST" : self._do_modify_data },
+                      "^/api/node/{uuid}/{dataname}/{key}$" :                       { "GET"  : self._do_get_keyvalue,
+                                                                                      "POST" : self._do_set_keyvalue }
                     }
 
         # Find the matching rest command and execute the handler.
@@ -208,7 +211,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write( json_text )
         
 
-    def _do_create_volume(self, uuid, typename, dataname):
+    def _do_create_new_data(self, uuid, typename, dataname):
         """
         The http client wants to create a new volume.
         Create it.
@@ -230,8 +233,23 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         if volume_path in self.server.h5_file:
             raise self.RequestError( httplib.CONFLICT,
-                                     "Cannot create.  Volume {} already exists.".format( volume_path ) )
+                                     "Cannot create.  Data '{}' already exists.".format( volume_path ) )
 
+        if typename == 'keyvalue':
+            # Create the new group in the appropriate 'volumes' group,
+            #  and then link to it in the node group.
+            self.server.h5_file.create_group( volume_path )
+            linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
+            self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
+            self.server.h5_file.flush()
+        else:
+            self._create_volume(volume_path, typename)
+
+        self.send_response(httplib.NO_CONTENT)
+        self.send_header("Content-length", "0" )
+        self.end_headers()
+
+    def _create_volume(self, volume_path, typename):
         # Must read exact bytes.
         # Apparently rfile.read() just hangs.
         body_len = self.headers.get("Content-Length")
@@ -256,10 +274,6 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
         self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
         self.server.h5_file.flush()
-
-        self.send_response(httplib.NO_CONTENT)
-        self.send_header("Content-length", "0" )
-        self.end_headers()
 
 
     def _do_get_volume_schema(self, uuid, dataname):
@@ -327,6 +341,76 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-length", 0 )
         self.end_headers()
     
+
+    def _do_get_keyvalue(self, uuid, dataname, key):
+        """
+        Retrieve the value for the given key from the node/data given by 
+        uuid/dataname, which must be of the keyvalue datatype.
+        """
+        if uuid not in self.server.h5_file["all_nodes"]:
+            raise self.RequestError( httplib.NOT_FOUND, "No such node with uuid {}".format( uuid ) )
+        
+        # Find the dataset that owns this node.
+        volume_path = None
+        for dataset_name, dataset_group in self.server.h5_file['datasets'].items():
+            for node_uuid, node_group in dataset_group['nodes'].items():
+                if node_uuid == uuid:
+                    volume_path = '/datasets/{dataset_name}/volumes/{dataname}'.format( **locals() )
+                    break
+
+        if volume_path is None:
+            raise self.RequestError( httplib.NOT_FOUND,
+                                     "Can't access keyvalue store.  Can't find node volumes dir in server hdf5 file." )
+
+        keyvalue_group = self.server.h5_file[volume_path]
+
+        if key not in keyvalue_group:
+            raise self.RequestError( httplib.NOT_FOUND, "Data '{}' has no value for key '{}'".format( dataname, key ) )
+
+        binary_data = keyvalue_group[key][()]
+
+        self.send_response(httplib.OK)
+        self.send_header("Content-type", "application/octet")
+        self.send_header("Content-length", str(len(binary_data)))
+        self.end_headers()
+        self.wfile.write( binary_data )
+
+    def _do_set_keyvalue(self, uuid, dataname, key):
+        """
+        Set the value for the given key from the node/data given by 
+        uuid/dataname, which must be of the keyvalue datatype.
+        """
+        if uuid not in self.server.h5_file["all_nodes"]:
+            raise self.RequestError( httplib.NOT_FOUND, "No such node with uuid {}".format( uuid ) )
+        
+        # Find the dataset that owns this node.
+        volume_path = None
+        for dataset_name, dataset_group in self.server.h5_file['datasets'].items():
+            for node_uuid, node_group in dataset_group['nodes'].items():
+                if node_uuid == uuid:
+                    volume_path = '/datasets/{dataset_name}/volumes/{dataname}'.format( **locals() )
+                    break
+
+        if volume_path is None:
+            raise self.RequestError( httplib.NOT_FOUND,
+                                     "Can't access keyvalue store.  Can't find node volumes dir in server hdf5 file." )
+
+        keyvalue_group = self.server.h5_file[volume_path]
+
+        # Prepare to overwrite
+        if key in keyvalue_group:
+            del keyvalue_group[key]
+
+        # Must read exact bytes.
+        # Apparently rfile.read() just hangs.
+        body_len = self.headers.get("Content-Length")
+        binary_data = self.rfile.read( int(body_len) )
+        keyvalue_group.create_dataset(key, data=binary_data) 
+
+        self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
+        self.send_header("Content-length", 0 )
+        self.end_headers()
+
 
     def _get_h5_dataset(self, uuid, dataname):
         """
@@ -519,6 +603,18 @@ class H5MockServerDataFile(object):
             self._f.create_group('datasets')
         if 'all_nodes' not in self._f:
             self._f.create_group('all_nodes')
+
+    def add_keyvalue_group(self, dataset_name, data_name):
+        volumes_group, nodes_group = self._get_dataset_groups(dataset_name)
+
+        # Create the group (i.e. the keyvalue store)
+        volumes_group.create_group( data_name )
+        
+        # Add a link to this volume in every node
+        for node in nodes_group.values():
+            node[data_name] = h5py.SoftLink( volumes_group.name + '/' + data_name )
+
+        self._f.flush()
 
     def add_volume(self, dataset_name, volume_name, volume, volume_metadata):
         assert isinstance( volume, numpy.ndarray )
