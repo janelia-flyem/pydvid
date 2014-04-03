@@ -86,19 +86,19 @@
                                     "items" : { "type" : "string" }
                                 },
                                 "MinPoint" : { 
-                                    "type" : "array",
+                                    "type" : ["null", "array"],
                                     "items" : { "type" : "number" }
                                 },
                                 "MaxPoint" : { 
-                                    "type" : "array",
+                                    "type" : ["null", "array"],
                                     "items" : { "type" : "number" }
                                 },
                                 "MinIndex" : { 
-                                    "type" : "array",
+                                    "type" : ["null", "array"],
                                     "items" : { "type" : "number" }
                                 },
                                 "MaxIndex" : { 
-                                    "type" : "array",
+                                    "type" : ["null", "array"],
                                     "items" : { "type" : "number" }
                                 }
                             }
