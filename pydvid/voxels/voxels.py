@@ -1,3 +1,4 @@
+import json
 import httplib
 import contextlib
 import StringIO
@@ -24,21 +25,30 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
     dvid_typename = voxels_metadata.determine_dvid_typename()
     rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
                  "".format( **locals() )
-    # TODO: Validate schema
-    metadata_json = voxels_metadata.to_json()
+
+    # DVID API will change soon to allow us to send the 
+    ## TODO: Validate schema
+    ##message_json = voxels_metadata.to_json()
+
+    # For now, we simply hard-code these settings.
+    message_data = { "BlockSize" : "32,32,32",
+                     "VoxelSize" : "1.0,1.0,1.0",
+                     "VoxelUnits" : "nanometers,nanometers,nanometers" }
+    message_json = json.dumps(message_data) 
+    
     headers = { "Content-Type" : "text/json" }
-    connection.request( "POST", rest_query, body=metadata_json, headers=headers )
+    connection.request( "POST", rest_query, body=message_json, headers=headers )
 
     with contextlib.closing( connection.getresponse() ) as response:
         #if response.status != httplib.NO_CONTENT:
         if response.status != httplib.OK:
             raise DvidHttpError( 
                 "voxels.new", response.status, response.reason, response.read(),
-                 "POST", rest_query, metadata_json, headers)
+                 "POST", rest_query, message_json, headers)
+
+        # Apparently dvid returns a status message in the response.  
+        # We can just read it and ignore it.
         response_text = response.read()
-        if response_text:
-            raise UnexpectedResponseError( "Expected an empty response from the DVID server.  "
-                                           "Got: {}".format( response_text ) )
 
 def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop ):
     _validate_query_bounds( start, stop, voxels_metadata.shape )
@@ -63,7 +73,7 @@ def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop ):
         return decoded_data
 
 def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new_data ):
-    _validate_query_bounds( start, stop, voxels_metadata.shape )
+    _validate_query_bounds( start, stop, voxels_metadata.shape, allow_overflow_extents=True )
     codec = VoxelsNddataCodec( voxels_metadata )
     rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop )
     body_data_stream = StringIO.StringIO()
@@ -121,9 +131,13 @@ def _format_subvolume_rest_uri( uuid, data_name, start, stop, format="" ):
         rest_query += "/" + format
     return rest_query
 
-def _validate_query_bounds( start, stop, volume_shape ):
+def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=False ):
     """
     Assert if the given start, stop, and volume_shape are not a valid combination. 
+    If allow_overflow_extents is True, then this function won't complain if the 
+    start/stop fields exceed the current bounds of the dataset.
+    (For writing, it's okay to exceed the bounds.  
+    For reading, that would probably be an error.)
     """
     shape = volume_shape
     start, stop, shape = map( numpy.array, (start, stop, shape) )
@@ -133,6 +147,8 @@ def _validate_query_bounds( start, stop, volume_shape ):
         "start/stop/shape mismatch: {}/{}/{}".format( start, stop, shape )
     assert (start < stop).all(), "Invalid start/stop: {}/{}".format( start, stop )
     assert (start >= 0).all(), "Invalid start: {}".format( start )
-    assert (start < shape).all(), "Invalid start/shape: {}/{}".format( start, shape )
-    assert (stop <= shape).all(), "Invalid stop/shape: {}/{}".format( stop, shape )
+    
+    if not allow_overflow_extents:
+        assert (start < shape).all(), "Invalid start/shape: {}/{}".format( start, shape )
+        assert (stop <= shape).all(), "Invalid stop/shape: {}/{}".format( stop, shape )
 

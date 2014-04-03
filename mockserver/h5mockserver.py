@@ -247,7 +247,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         else:
             self._create_volume( dataset_name, uuid, dataname, volume_path, typename )
 
-        self.send_response(httplib.NO_CONTENT)
+        #self.send_response(httplib.NO_CONTENT)
+        self.send_response(httplib.OK)
         self.send_header("Content-length", "0" )
         self.end_headers()
 
@@ -255,24 +256,40 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # Must read exact bytes.
         # Apparently rfile.read() just hangs.
         body_len = self.headers.get("Content-Length")
-        metadata_json = self.rfile.read( int(body_len) )
-        try:
-            voxels_metadata = VoxelsMetadata( metadata_json )
-        except ValueError as ex:
-            raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
-                                     'Error parsing volume metadata: {}\n'
-                                     'Invalid metadata response body was:\n{}'
-                                     ''.format( ex.args[0], metadata_json ) )
-        expected_typename = voxels_metadata.determine_dvid_typename()
-        if typename != expected_typename:
-            raise self.RequestError( httplib.BAD_REQUEST,
-                                     "Cannot create volume.  "
-                                     "REST typename was {}, but metadata JSON implies typename {}"
-                                     "".format( typename, expected_typename ) )
+
+        ## Current DVID API does not use metadata json for creating the volume.
+        ## This may change soon...
+        ## 
+        #metadata_json = self.rfile.read( int(body_len) )
+        #try:
+        #    voxels_metadata = VoxelsMetadata( metadata_json )
+        #except ValueError as ex:
+        #    raise self.RequestError( httplib.BAD_REQUEST, 'Can\'t create volume.  '
+        #                             'Error parsing volume metadata: {}\n'
+        #                             'Invalid metadata response body was:\n{}'
+        #                             ''.format( ex.args[0], metadata_json ) )
+        #expected_typename = voxels_metadata.determine_dvid_typename()
+        #if typename != expected_typename:
+        #    raise self.RequestError( httplib.BAD_REQUEST,
+        #                             "Cannot create volume.  "
+        #                             "REST typename was {}, but metadata JSON implies typename {}"
+        #                             "".format( typename, expected_typename ) )
+
+        # Instead, the json contains some other parameters that we don't really care about...
+        # But we need to read at least one of them to determine the dimensionality of the data.
+        
+        message_json = self.rfile.read( int(body_len) )
+        message_data = json.loads( message_json )
+        num_axes = len(message_data["VoxelSize"].split(','))
+        
 
         # Create the new volume in the appropriate 'volumes' group,
         #  and then link to it in the node group.
-        self.server.h5_file.create_dataset( volume_path, shape=voxels_metadata.shape, dtype=voxels_metadata.dtype )
+        dtypename, channels = VoxelsMetadata.determine_channels_from_dvid_typename(typename)
+        shape = (channels,) + (0,)*num_axes
+        maxshape = (None,)*len(shape) # No maxsize
+        dtype = numpy.dtype(dtypename)
+        self.server.h5_file.create_dataset( volume_path, shape=shape, dtype=dtype, maxshape=maxshape )
         linkname = '/datasets/{dataset_name}/nodes/{uuid}/{dataname}'.format( **locals() )
         self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
         self.server.h5_file.flush()
@@ -332,6 +349,11 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
         
+        # If the user is writing data beoyond the current extents of the dataset,
+        #  resize the dataset first.
+        if (numpy.array(full_roi_stop) > dataset.shape).any():
+            dataset.resize( full_roi_stop )
+        
         voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
         codec = VoxelsNddataCodec( voxels_metadata )
         data = codec.decode_to_ndarray(self.rfile, full_roi_shape)
@@ -339,7 +361,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         dataset[slicing] = data
         self.server.h5_file.flush()
 
-        self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
+        #self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
+        self.send_response(httplib.OK)
         self.send_header("Content-length", 0 )
         self.end_headers()
     
@@ -409,7 +432,8 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         binary_data = self.rfile.read( int(body_len) )
         keyvalue_group.create_dataset(key, data=binary_data) 
 
-        self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
+        #self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
+        self.send_response(httplib.OK)
         self.send_header("Content-length", 0 )
         self.end_headers()
 

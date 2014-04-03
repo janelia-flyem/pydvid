@@ -77,14 +77,15 @@ class TestVoxelsAccessor(object):
         Create a new remote volume.  Verify that the server created it in the hdf5 file.
         """
         volume_name = 'new_volume'
-        metadata = voxels.VoxelsMetadata.create_default_metadata((4,100,100,100), numpy.uint8, 'cxyz', 1.0, "")
+        metadata = voxels.VoxelsMetadata.create_default_metadata((4,0,0,0), numpy.uint8, 'cxyz', 1.0, "")
         voxels.create_new( self.client_connection, self.data_uuid, volume_name, metadata )
          
         with h5py.File(self.test_filepath, 'r') as f:
             volumes_group = "/datasets/{dvid_dataset}/volumes".format( dvid_dataset=self.dvid_dataset )
             assert volume_name in f[volumes_group], "Volume wasn't created: {}".format( volumes_group + "/" + volume_name )
-            assert voxels.VoxelsMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] ) == metadata,\
-                "New volume has the wrong metadata"
+            
+            metadata_from_file = voxels.VoxelsMetadata.create_from_h5_dataset( f["all_nodes"][self.data_uuid][volume_name] )
+            assert metadata_from_file == metadata, "New volume has the wrong metadata"
  
  
     def test_get_ndarray(self):
@@ -262,7 +263,7 @@ class TestVoxelsAccessor(object):
         with h5py.File(h5filename, 'r') as f:
             return f["all_nodes"][uuid][data_name][slicing]
  
-    def test_zz_readme_usage(self):
+    def test_zz_quickstart_usage(self):
         import json
         import httplib
         import numpy
@@ -281,21 +282,26 @@ class TestVoxelsAccessor(object):
         
         # Create a new remote volume
         uuid = 'abcde'
-        voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
+        voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,0,0,0), numpy.uint8, 'cxyz', 1.0, "" )
         voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
 
         # Use the VoxelsAccessor convenience class to manipulate a particular data volume     
         dvid_volume = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
          
-        # Read from it
-        cutout_array = dvid_volume.get_ndarray( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
+        # Add some data
+        updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
+        dvid_volume[:,10:110,20:120,30:130] = updated_data
+        # OR:
+        dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
+        
+        # Read from it (First axis is channel.)
+        cutout_array = dvid_volume[:,10:110,20:120,30:130]
+        # OR:
+        cutout_array = dvid_volume.get_ndarray( (0,10,20,30), (4,110,120,130) )
+
         assert isinstance(cutout_array, numpy.ndarray)
         assert cutout_array.shape == (4,100,100,100)
      
-        # Modify it
-        updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-        cutout_array = dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
-
 if __name__ == "__main__":
     import sys
     import nose

@@ -1,3 +1,4 @@
+import numpy
 import voxels
 
 class VoxelsAccessor(object):
@@ -25,9 +26,19 @@ class VoxelsAccessor(object):
     @property
     def shape(self):
         """
-        Property.  The shape of the remote DVID volume.
+        Property.  The maximum coordinates in the DVID volume coordinate space.
+        This is the stop coordinate of the volume's bounding box.
+        All data above this coordinate in any dimension is guaranteed to be invalid.
         """
         return self.voxels_metadata.shape
+
+    @property
+    def minindex(self):
+        """
+        Property.  The starting coordinate of the volume's bounding box.
+        All data below this coordinate in any dimension is guaranteed to be invalid.
+        """
+        return self.voxels_metadata.minindex
 
     @property
     def dtype(self):
@@ -57,7 +68,12 @@ class VoxelsAccessor(object):
         """
         Overwrite subvolume specified by the given start and stop pixel coordinates with new_data.
         """
-        return voxels.post_ndarray( self._connection, self.uuid, self.data_name, self.voxels_metadata, start, stop, new_data )
+        voxels.post_ndarray( self._connection, self.uuid, self.data_name, self.voxels_metadata, start, stop, new_data )
+        if ( numpy.array(stop) > self.shape ).any() or \
+           ( numpy.array(start) < self.minindex ).any():
+            # It looks like this post will UPDATE the volume's extents.
+            # Therefore, RE-request this volume's metadata from DVID so we get the new volume shape
+            self.voxels_metadata = voxels.get_metadata( self._connection, self.uuid, self.data_name )        
 
     def __getitem__(self, slicing):
         """
@@ -158,10 +174,12 @@ class VoxelsAccessor(object):
         start = map( lambda s: s.start, request_slicing )
         stop = map( lambda s: s.stop, request_slicing )
 
-        assert not (numpy.array(stop) > shape).any(), \
-            "Can't write data outside the bounds of the remote volume. "\
-            "Volume shape is {}, but you are attempting to write to start={},stop={}"\
-            "".format( shape, start, stop )
+        ## This assertion is omitted because users are allowed to expand the size of 
+        ##   the remote volume implicitly by simply giving it more data
+        ##assert not (numpy.array(stop) > shape).any(), \
+        ##    "Can't write data outside the bounds of the remote volume. "\
+        ##    "Volume shape is {}, but you are attempting to write to start={},stop={}"\
+        ##    "".format( shape, start, stop )
 
         slicing_shape = numpy.array(stop) - start
         assert numpy.prod(array_data.shape) == numpy.prod(slicing_shape), \

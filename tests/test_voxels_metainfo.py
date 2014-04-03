@@ -11,17 +11,20 @@ class TestVolumeInfo( object ):
                 "Label": "X",
                 "Resolution": 3.1,
                 "Units": "nanometers",
-                "Size": 100
+                "Size": 100,
+                "Offset" : 0
             },{
                 "Label": "Y",
                 "Resolution": 3.1,
                 "Units": "nanometers",
-                "Size": 200
+                "Size": 200,
+                "Offset" : 0
             },{
                 "Label": "Z",
                 "Resolution": 40,
                 "Units": "nanometers",
-                "Size": 400
+                "Size": 400,
+                "Offset" : 0
             }
         ],
         "Values": [

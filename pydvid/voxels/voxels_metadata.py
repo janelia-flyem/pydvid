@@ -27,9 +27,19 @@ class VoxelsMetadata(dict):
     @property
     def shape(self):
         """
-        Property.  The shape of the remote DVID volume.
+        Property.  The maximum coordinates in the DVID volume coordinate space.
+        This is the stop coordinate of the volume's bounding box.
+        All data above this coordinate in any dimension is guaranteed to be invalid.
         """
         return self._shape
+
+    @property
+    def minindex(self):
+        """
+        Property.  The starting coordinate of the volume's bounding box.
+        All data below this coordinate in any dimension is guaranteed to be invalid.
+        """
+        return self._minindex
 
     @property
     def dtype(self):
@@ -48,6 +58,7 @@ class VoxelsMetadata(dict):
         .. note:: By DVID convention, the axiskeys are expressed in fortran order.
         """
         return self._axiskeys
+    
 
     def __init__(self, metadata):
         """
@@ -78,10 +89,14 @@ class VoxelsMetadata(dict):
         # We always in include "channel" as the FIRST axis
         # (DVID uses fortran-order notation.)
         shape = []
+        minindex = []
+        minindex.append( 0 )
         shape.append( len(metadata["Values"]) ) 
         for axisfields in metadata['Axes']:
-            shape.append( axisfields["Size"] )
+            minindex.append( axisfields["Offset"] )
+            shape.append( axisfields["Size"] + axisfields["Offset"] )
         self._shape = tuple(shape)
+        self._minindex = tuple(minindex)
     
         axiskeys = 'c'
         for axisfields in metadata['Axes']:
@@ -130,6 +145,7 @@ class VoxelsMetadata(dict):
             axisdict["Resolution"] = resolution
             axisdict["Units"] = units
             axisdict["Size"] = size
+            axisdict["Offset"] = 0
             metadata["Axes"].append( axisdict )
         
         metadata["Values"] = []
@@ -138,6 +154,13 @@ class VoxelsMetadata(dict):
             metadata["Values"].append( { "DataType" : dtype.name,
                                          "Label" : "" } )
         return VoxelsMetadata(metadata)
+
+
+    TYPENAMES = { ('uint8',  1) : 'grayscale8',
+                  ('uint32', 1) : 'labels32',
+                  ('uint64', 1) : 'labels64',
+                  ('uint8',  4) : 'rgba8' }
+
     
     def determine_dvid_typename(self):
         """
@@ -146,19 +169,23 @@ class VoxelsMetadata(dict):
         For example, if this volume contains 1-channel uint8 data, 
         the DVID datatype is 'grayscale8'.
         """
-        typenames = { ('uint8',  1) : 'grayscale8',
-                      ('uint32', 1) : 'labels32',
-                      ('uint64', 1) : 'labels64',
-                      ('uint8',  4) : 'rgba8' }
-
         # First axis is always channel
         num_channels = self.shape[0]
         try:
-            return typenames[(self.dtype.name, num_channels)]
+            return self.TYPENAMES[(self.dtype.name, num_channels)]
         except KeyError:
             msg = "DVID does not have an associated typename for {} channels of pixel type {}"\
                   "".format( num_channels, self.dtype )
             raise Exception( msg )
+
+    @classmethod    
+    def determine_channels_from_dvid_typename(cls, typename):
+        mapping = { v:k for k,v in cls.TYPENAMES.items() }
+        try:
+            return mapping[typename]
+        except KeyError:
+            msg = "Don't support DVID typename '{}'".format( typename )
+            raise Exception(msg)
     
     if _have_vigra:
         def create_axistags(self):
