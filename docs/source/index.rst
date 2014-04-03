@@ -13,8 +13,6 @@ The `pydvid`_ package implements a Python interface for calling the `DVID`_ http
 .. _DVID: https://github.com/janelia-flyem/dvid
 
 
-Contents:
-
 .. toctree::
    :maxdepth: 2
 
@@ -22,11 +20,3 @@ Contents:
    quickstart
    reference
    maintenance
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
