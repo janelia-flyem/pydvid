@@ -22,7 +22,11 @@ Changes to the dvidschema repo must be pulled into pydvid using ``git subtree pu
 Testing
 =======
 
-The test suite requires `nosetests <https://nose.readthedocs.org/en/latest/>`_.
+The test suite requires the following additional dependencies:
+
+* `nosetests <https://nose.readthedocs.org/en/latest/>`_
+* `h5py <http://www.h5py.org/>`_
+
 Here's how to run the test suite:
 
 .. code-block:: bash
