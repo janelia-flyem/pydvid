@@ -16,7 +16,8 @@ The `pydvid`_ package implements a Python interface for calling the `DVID`_ http
 .. toctree::
    :maxdepth: 2
 
-   intro
+   install
    quickstart
    reference
+   gui
    maintenance
