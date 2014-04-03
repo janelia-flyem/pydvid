@@ -29,7 +29,7 @@
                     },
                     "VersionMap" : {
                         "type" : "object",
-                        "additionalProperties" : { "type" : "string" }
+                        "additionalProperties" : { "type" : "number" }
                     },
                     "NewVersonID" : { "type" : "number" },
                     "NewDataID" : { "type" : "number" },
