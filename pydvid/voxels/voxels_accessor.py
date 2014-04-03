@@ -142,8 +142,9 @@ class VoxelsAccessor(object):
                 v[1,...] = green_data # Error!
         """
         shape = self.voxels_metadata.shape
-        full_slicing = VoxelsAccessor._expand_slicing(slicing, shape)
-        request_slicing, result_slicing = self._determine_request_slicings(full_slicing, shape)
+        expanded_slicing = VoxelsAccessor._expand_slicing(slicing, shape)
+        explicit_slicing = VoxelsAccessor._explicit_slicing(expanded_slicing, shape)
+        request_slicing, result_slicing = self._determine_request_slicings(explicit_slicing, shape)
 
         # We only support pushing pure subvolumes, that is:
         # nothing that would require fetching a volume, changing it, and pushing it back.
@@ -156,6 +157,17 @@ class VoxelsAccessor(object):
 
         start = map( lambda s: s.start, request_slicing )
         stop = map( lambda s: s.stop, request_slicing )
+
+        assert not (numpy.array(stop) > shape).any(), \
+            "Can't write data outside the bounds of the remote volume. "\
+            "Volume shape is {}, but you are attempting to write to start={},stop={}"\
+            "".format( shape, start, stop )
+
+        slicing_shape = numpy.array(stop) - start
+        assert numpy.prod(array_data.shape) == numpy.prod(slicing_shape), \
+            "Provided data does not match the shape of the slicing:"\
+            "data has shape {}, slicing {} has shape: {}"\
+            "".format( array_data.shape, slicing, slicing_shape )
 
         self.post_ndarray(start, stop, array_data)
 
