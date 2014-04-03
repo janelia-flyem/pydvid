@@ -14,29 +14,33 @@ Quickstart
     
     # List the dataset roots: /api/datasets/list
     root_nodes_info = general.get_datasets_list( connection )
-    # print json.dumps( root_nodes_info, indent=4 )
+    print json.dumps( root_nodes_info, indent=4 )
 
     # Get detailed dataset info: /api/datasets/info
     dataset_details = general.get_datasets_info( connection )
-    # print json.dumps( dataset_details, indent=4 )
+    print json.dumps( dataset_details, indent=4 )
     
+    # Create a new remote volume
     uuid = 'abcde'
-    ## NOTE: Dvid doesn't yet support volume creation via the REST HTTP API...
-    ## Create a new remote volume
-    ##voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
-    ##voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
+    voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,0,0,0), numpy.uint8, 'cxyz', 1.0, "" )
+    voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
 
     # Use the VoxelsAccessor convenience class to manipulate a particular data volume     
     dvid_volume = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
      
-    # Read from it
-    cutout_array = dvid_volume.get_ndarray( (0,10,20,30), (4,110,120,130) ) # First axis is channel.
+    # Add some data
+    updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
+    dvid_volume[:,10:110,20:120,30:130] = updated_data
+    # OR:
+    dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
+    
+    # Read from it (First axis is channel.)
+    cutout_array = dvid_volume[:,10:110,20:120,30:130]
+    # OR:
+    cutout_array = dvid_volume.get_ndarray( (0,10,20,30), (4,110,120,130) )
+
     assert isinstance(cutout_array, numpy.ndarray)
     assert cutout_array.shape == (4,100,100,100)
- 
-    # Modify it
-    updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-    cutout_array = dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
 
 A note about data axes
 ----------------------
