@@ -290,12 +290,12 @@ class TestVoxelsAccessor(object):
          
         # Add some data
         updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
-        dvid_volume[:,10:110,20:120,30:130] = updated_data
+        dvid_volume[:, 10:110, 20:120, 30:130] = updated_data
         # OR:
         dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
         
         # Read from it (First axis is channel.)
-        cutout_array = dvid_volume[:,10:110,20:120,30:130]
+        cutout_array = dvid_volume[:, 10:110, 20:120, 30:130]
         # OR:
         cutout_array = dvid_volume.get_ndarray( (0,10,20,30), (4,110,120,130) )
 
