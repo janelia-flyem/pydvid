@@ -11,7 +11,8 @@ def create_new( connection, uuid, data_name ):
     connection.request( "POST", rest_cmd )
 
     with contextlib.closing( connection.getresponse() ) as response:
-        if response.status != httplib.NO_CONTENT:
+        #if response.status != httplib.NO_CONTENT:
+        if response.status != httplib.OK:
             raise DvidHttpError( "keyvalue.create_new", response.status, response.reason, 
                                  response.read(), "POST", rest_cmd )
         response_text = response.read()
@@ -35,7 +36,8 @@ def put_value( connection, uuid, data_name, key, value ):
     headers = { "Content-Type" : "application/octet-stream" }
     connection.request( "POST", rest_cmd, body=value, headers=headers )
     with contextlib.closing( connection.getresponse() ) as response:
-        if response.status != httplib.NO_CONTENT:
+        #if response.status != httplib.NO_CONTENT:
+        if response.status != httplib.OK:
             raise DvidHttpError( 
                 "keyvalue post", response.status, response.reason, response.read(),
                  "POST", rest_cmd, "<binary data>", headers)
@@ -60,4 +62,9 @@ def get_value_response( connection, uuid, data_name, key ):
             "GET", rest_query, "" )
     return response
 
+if __name__ == "__main__":
+    import httplib
+    conn = httplib.HTTPConnection("localhost:8000")
+    put_value( conn, '4a', 'greetings', 'english', 'hello' )
+    print "Got greeting: ", get_value( conn, '4a', 'greetings', 'english')
     
