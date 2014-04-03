@@ -1,0 +1,349 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pydvid.voxels.voxels_accessor &mdash; pydvid 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="pydvid 0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="pydvid.voxels" href="../voxels.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">pydvid 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../voxels.html" accesskey="U">pydvid.voxels</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pydvid.voxels.voxels_accessor</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">voxels</span>
+
+<span class="k">class</span> <span class="nc">VoxelsAccessor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Http client for retrieving a voxels volume data from a DVID server.</span>
+<span class="sd">    An instance of VoxelsAccessor is capable of retrieving data from only one remote data volume.</span>
+<span class="sd">    To retrieve data from multiple remote volumes, instantiate multiple DvidClient objects.</span>
+<span class="sd">    </span>
+<span class="sd">    **TODO**:</span>
+<span class="sd">    </span>
+<span class="sd">    * Allow users to provide a pre-allocated array when requesting data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="VoxelsAccessor.__init__"><a class="viewcode-back" href="../../../reference.html#pydvid.voxels.voxels_accessor.VoxelsAccessor.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">data_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param uuid: The node uuid</span>
+<span class="sd">        :param data_name: The name of the volume</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="n">uuid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_name</span> <span class="o">=</span> <span class="n">data_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">connection</span>
+
+        <span class="c"># Request this volume&#39;s metadata from DVID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span> <span class="o">=</span> <span class="n">voxels</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">data_name</span> <span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Property.  The shape of the remote DVID volume.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Property.  The pixel datatype of the remote DVID volume, as a ``numpy.dtype`` object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="o">.</span><span class="n">dtype</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">axiskeys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Property.  </span>
+<span class="sd">        A string representing the axis indexing order of the volume, e.g. &#39;cxyz&#39;</span>
+<span class="sd">        Always starts with &#39;c&#39; (channel).</span>
+<span class="sd">        </span>
+<span class="sd">        .. note:: By DVID convention, the axiskeys are expressed in fortran order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="o">.</span><span class="n">axiskeys</span>
+
+    <span class="k">def</span> <span class="nf">get_ndarray</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Request the subvolume specified by the given start and stop pixel coordinates.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">voxels</span><span class="o">.</span><span class="n">get_ndarray</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">post_ndarray</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">new_data</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Overwrite subvolume specified by the given start and stop pixel coordinates with new_data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">voxels</span><span class="o">.</span><span class="n">post_ndarray</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">new_data</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="VoxelsAccessor.__getitem__"><a class="viewcode-back" href="../../../reference.html#pydvid.voxels.voxels_accessor.VoxelsAccessor.__getitem__">[docs]</a>    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implement convenient numpy-like slicing syntax for volume access.</span>
+
+<span class="sd">        Limitations: </span>
+<span class="sd">            - &quot;Fancy&quot; indexing via index arrays, etc. is not supported,</span>
+<span class="sd">              but &quot;normal&quot; slicing, including stepping, is supported.</span>
+<span class="sd">               </span>
+<span class="sd">        Examples:</span>
+<span class="sd">        </span>
+<span class="sd">            .. code-block:: python            </span>
+
+<span class="sd">                connection = httplib.HTTPConnection( &quot;localhost:8000&quot; ) </span>
+<span class="sd">                v = VoxelsAccessor( connection, uuid=abc123, data_name=&#39;my_3d_rgb_volume&#39; )</span>
+
+<span class="sd">                # The whole thing</span>
+<span class="sd">                a = v[:]</span>
+<span class="sd">                a = v[...]</span>
+<span class="sd">                </span>
+<span class="sd">                # Arbitrary slicing</span>
+<span class="sd">                a = v[...,10,:]</span>
+<span class="sd">                </span>
+<span class="sd">                # Note: DVID always returns all channels.</span>
+<span class="sd">                #       Here, you are permitted to slice into the channel axis,</span>
+<span class="sd">                #       but be aware that this implementation requests all </span>
+<span class="sd">                #       channels and returns the ones you asked for.</span>
+<span class="sd">                blue = v[2]</span>
+<span class="sd">                </span>
+<span class="sd">                # Therefore, avoid this, since it results in 2 requests for the same data</span>
+<span class="sd">                red = v[0]</span>
+<span class="sd">                green = v[1]</span>
+<span class="sd">                </span>
+<span class="sd">                # Instead, do this:</span>
+<span class="sd">                rgb = v[:]</span>
+<span class="sd">                red, green, blue = rgb[0], rgb[1], rgb[2]</span>
+<span class="sd">                </span>
+<span class="sd">                # Similarly, you are permitted to use slices with steps, but be aware that </span>
+<span class="sd">                # the entire bounding volume will be requested, and the sliced steps will be </span>
+<span class="sd">                # extracted from the dense volume.</span>
+<span class="sd">                </span>
+<span class="sd">                # Extract the upper-left 10x10 tile of every other z-slice:</span>
+<span class="sd">                a = v[:,:10,:10,::2]</span>
+<span class="sd">    </span>
+<span class="sd">                # The above is equivalent to this:</span>
+<span class="sd">                a = v[:,:10,:10,:][...,::2]            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">expanded_slicing</span> <span class="o">=</span> <span class="n">VoxelsAccessor</span><span class="o">.</span><span class="n">_expand_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="n">explicit_slicing</span> <span class="o">=</span> <span class="n">VoxelsAccessor</span><span class="o">.</span><span class="n">_explicit_slicing</span><span class="p">(</span><span class="n">expanded_slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="n">request_slicing</span><span class="p">,</span> <span class="n">result_slicing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_determine_request_slicings</span><span class="p">(</span><span class="n">explicit_slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">request_slicing</span> <span class="p">)</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">request_slicing</span> <span class="p">)</span>
+
+        <span class="n">retrieved_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ndarray</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">retrieved_volume</span><span class="p">[</span><span class="n">result_slicing</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="VoxelsAccessor.__setitem__"><a class="viewcode-back" href="../../../reference.html#pydvid.voxels.voxels_accessor.VoxelsAccessor.__setitem__">[docs]</a>    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">array_data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implement convenient numpy-like slicing syntax for overwriting regions of a DVID volume.</span>
+
+<span class="sd">        Limitations:</span>
+<span class="sd">            Unlike the __getitem__ syntax implemented above, we do NOT permit arbitrary slicing.</span>
+<span class="sd">            Instead, only &quot;dense&quot; subvolumes may be written.  </span>
+<span class="sd">            That is, you must include all channels, and your slices may not include a step size.</span>
+<span class="sd">        </span>
+<span class="sd">        Examples:</span>
+
+<span class="sd">            .. code-block:: python            </span>
+
+<span class="sd">                connection = httplib.HTTPConnection( &quot;localhost:8000&quot; ) </span>
+<span class="sd">                v = VoxelsAccessor( connection, uuid=abc123, data_name=&#39;my_3d_rgb_volume&#39; )</span>
+<span class="sd">            </span>
+<span class="sd">                # Overwrite the third z-slice</span>
+<span class="sd">                v[...,2] = a</span>
+<span class="sd">                </span>
+<span class="sd">                # Forbidden: attempt to stepped slices</span>
+<span class="sd">                v[...,0:10:2] = a # Error!</span>
+<span class="sd">                </span>
+<span class="sd">                # Forbidden: attempt to write only a subset of channels (the first axis)</span>
+<span class="sd">                v[1,...] = green_data # Error!</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxels_metadata</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">full_slicing</span> <span class="o">=</span> <span class="n">VoxelsAccessor</span><span class="o">.</span><span class="n">_expand_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="n">request_slicing</span><span class="p">,</span> <span class="n">result_slicing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_determine_request_slicings</span><span class="p">(</span><span class="n">full_slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+
+        <span class="c"># We only support pushing pure subvolumes, that is:</span>
+        <span class="c"># nothing that would require fetching a volume, changing it, and pushing it back.</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">result_slicing</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+                <span class="k">assert</span> <span class="n">s</span><span class="o">.</span><span class="n">step</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">,</span> \
+                    <span class="s">&quot;You can&#39;t use step-slicing when pushing data back to DVID.&quot;</span>
+        <span class="k">assert</span> <span class="n">result_slicing</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">slice</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">),</span> \
+            <span class="s">&quot;When pushing a subvolume to DVID, you must include all channels, not a subset of them.&quot;</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">request_slicing</span> <span class="p">)</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">request_slicing</span> <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_ndarray</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">array_data</span><span class="p">)</span>
+</div>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_determine_request_slicings</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">full_slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine the slicings to use for </span>
+<span class="sd">        (1) requesting the volume from DVID and </span>
+<span class="sd">        (2) extracting the specific pixels from the requested volume.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Convert singletons axes (which would reduce the dimensionality of the result)</span>
+        <span class="c">#  into start:stop axes, but keep them as singletons in the result_slicing</span>
+        <span class="n">request_slicing</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">result_slicing</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">full_slicing</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+                <span class="n">request_slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">s</span> <span class="p">)</span>
+                <span class="n">result_slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="nb">slice</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">stop</span><span class="o">-</span><span class="n">s</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">step</span> <span class="p">)</span> <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">request_slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="nb">slice</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="p">)</span>
+                <span class="n">result_slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c"># First dimension is channel, which we must request in full.</span>
+        <span class="n">request_slicing</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">result_slicing</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_slicing</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">request_slicing</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">result_slicing</span><span class="p">)</span>
+        
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_explicit_slicing</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Replace all slice(None) items in the given </span>
+<span class="sd">        slicing with explicit start/stop coordinates using the given shape.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">explicit_slicing</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">slc</span><span class="p">,</span> <span class="n">maxstop</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slc</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+                <span class="n">explicit_slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">slc</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">step</span> <span class="o">=</span> <span class="n">slc</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">slc</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">slc</span><span class="o">.</span><span class="n">step</span>
+                <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">stop</span> <span class="o">=</span> <span class="n">maxstop</span>
+                <span class="n">explicit_slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">explicit_slicing</span>        
+    
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_expand_slicing</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            s: Anything that can be used as a numpy array index:</span>
+<span class="sd">               - int</span>
+<span class="sd">               - slice</span>
+<span class="sd">               - Ellipsis (i.e. ...)</span>
+<span class="sd">               - Some combo of the above as a tuple or list</span>
+<span class="sd">            </span>
+<span class="sd">            shape: The shape of the array that will be accessed</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A tuple of length N where N=len(shape)</span>
+<span class="sd">            slice(None) is inserted in missing positions so as not to change the meaning of the slicing.</span>
+<span class="sd">            e.g. if shape=(1,2,3,4,5):</span>
+<span class="sd">                0 --&gt; (0,:,:,:,:)</span>
+<span class="sd">                (0:1) --&gt; (0:1,:,:,:,:)</span>
+<span class="sd">                : --&gt; (:,:,:,:,:)</span>
+<span class="sd">                ... --&gt; (:,:,:,:,:)</span>
+<span class="sd">                (0,0,...,4) --&gt; (0,0,:,:,4)            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="c"># Convert : to (:,), or 5 to (5,)</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span><span class="p">,)</span>
+    
+        <span class="c"># Compute number of axes missing from the slicing</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">s</span> <span class="o">==</span> <span class="p">(</span><span class="bp">Ellipsis</span><span class="p">,)</span> <span class="ow">or</span> <span class="n">s</span> <span class="o">==</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),),</span> \
+                <span class="s">&quot;Slicing must not have more elements than the shape, except for [:] and [...] slices&quot;</span>
+    
+        <span class="c"># Replace Ellipsis with (:,:,:)</span>
+        <span class="k">if</span> <span class="bp">Ellipsis</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+            <span class="n">ei</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">Ellipsis</span><span class="p">)</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">ei</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),)</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="n">ei</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+    
+        <span class="c"># Shouldn&#39;t be more than one Ellipsis</span>
+        <span class="k">assert</span> <span class="bp">Ellipsis</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">s</span><span class="p">,</span> \
+            <span class="s">&quot;illegal slicing: found more than one Ellipsis&quot;</span>
+
+        <span class="c"># Append (:,) until we get the right length</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),)</span>
+        
+        <span class="c"># Special case: we allow [:] and [...] for empty shapes ()</span>
+        <span class="k">if</span> <span class="n">shape</span> <span class="o">==</span> <span class="p">():</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">s</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">pydvid 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../voxels.html" >pydvid.voxels</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>
