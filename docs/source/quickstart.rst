@@ -14,16 +14,17 @@ Quickstart
     
     # List the dataset roots: /api/datasets/list
     root_nodes_info = general.get_datasets_list( connection )
-    print json.dumps( root_nodes_info, indent=4 )
+    # print json.dumps( root_nodes_info, indent=4 )
 
     # Get detailed dataset info: /api/datasets/info
     dataset_details = general.get_datasets_info( connection )
-    print json.dumps( dataset_details, indent=4 )
+    # print json.dumps( dataset_details, indent=4 )
     
-    # Create a new remote volume
     uuid = 'abcde'
-    voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
-    voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
+    ## NOTE: Dvid doesn't yet support volume creation via the REST HTTP API...
+    ## Create a new remote volume
+    ##voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, 'cxyz', 1.0, "" )
+    ##voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
 
     # Use the VoxelsAccessor convenience class to manipulate a particular data volume     
     dvid_volume = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
