@@ -1,10 +1,3 @@
-Introduction
-============
-
-The pydvid package implements a Python interface for calling the `DVID`_ http REST API.
-
-.. _DVID: https://github.com/janelia-flyem/dvid
-
 Installation and Dependencies
 =============================
 
@@ -13,9 +6,11 @@ You'll need to install it before you can use pydvid.  For example::
 
     pip install jsonschema
 
-Obtain pydvid by cloning the git repo::
+Obtain pydvid by cloning the `git repo`_::
 
     git clone https://github.com/janelia-flyem/pydvid
+
+.. _git repo: https://github.com/janelia-flyem/pydvid
 
 Installation is straightforward::
 

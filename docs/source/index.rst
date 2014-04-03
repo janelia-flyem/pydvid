@@ -6,6 +6,13 @@
 pydvid Documentation
 ==================================
 
+The `pydvid`_ package implements a Python interface for calling the `DVID`_ http REST API.
+
+.. _pydvid: https://github.com/janelia-flyem/pydvid
+
+.. _DVID: https://github.com/janelia-flyem/dvid
+
+
 Contents:
 
 .. toctree::
