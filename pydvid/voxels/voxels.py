@@ -30,7 +30,8 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
     connection.request( "POST", rest_query, body=metadata_json, headers=headers )
 
     with contextlib.closing( connection.getresponse() ) as response:
-        if response.status != httplib.NO_CONTENT:
+        #if response.status != httplib.NO_CONTENT:
+        if response.status != httplib.OK:
             raise DvidHttpError( 
                 "voxels.new", response.status, response.reason, response.read(),
                  "POST", rest_query, metadata_json, headers)
@@ -70,7 +71,8 @@ def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new
     headers = { "Content-Type" : VoxelsNddataCodec.VOLUME_MIMETYPE }
     connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
     with contextlib.closing( connection.getresponse() ) as response:
-        if response.status != httplib.NO_CONTENT:
+        #if response.status != httplib.NO_CONTENT:
+        if response.status != httplib.OK:
             raise DvidHttpError( 
                 "subvolume post", response.status, response.reason, response.read(),
                  "POST", rest_query, "<binary data>", headers)
