@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Quickstart &mdash; pydvid 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="pydvid 0.1 documentation" href="index.html" />
+    <link rel="next" title="API Reference" href="reference.html" />
+    <link rel="prev" title="Installation and Dependencies" href="install.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="reference.html" title="API Reference"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Installation and Dependencies"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">httplib</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">pydvid</span> <span class="kn">import</span> <span class="n">voxels</span><span class="p">,</span> <span class="n">general</span>
+
+<span class="c"># Open a connection to DVID</span>
+<span class="n">connection</span> <span class="o">=</span> <span class="n">httplib</span><span class="o">.</span><span class="n">HTTPConnection</span><span class="p">(</span> <span class="s">&quot;localhost:8000&quot;</span> <span class="p">)</span>
+
+<span class="c"># List the dataset roots: /api/datasets/list</span>
+<span class="n">root_nodes_info</span> <span class="o">=</span> <span class="n">general</span><span class="o">.</span><span class="n">get_datasets_list</span><span class="p">(</span> <span class="n">connection</span> <span class="p">)</span>
+<span class="c"># print json.dumps( root_nodes_info, indent=4 )</span>
+
+<span class="c"># Get detailed dataset info: /api/datasets/info</span>
+<span class="n">dataset_details</span> <span class="o">=</span> <span class="n">general</span><span class="o">.</span><span class="n">get_datasets_info</span><span class="p">(</span> <span class="n">connection</span> <span class="p">)</span>
+<span class="c"># print json.dumps( dataset_details, indent=4 )</span>
+
+<span class="n">uuid</span> <span class="o">=</span> <span class="s">&#39;abcde&#39;</span>
+<span class="c">## NOTE: Dvid doesn&#39;t yet support volume creation via the REST HTTP API...</span>
+<span class="c">## Create a new remote volume</span>
+<span class="c">##voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,200,200,200), numpy.uint8, &#39;cxyz&#39;, 1.0, &quot;&quot; )</span>
+<span class="c">##voxels.create_new( connection, uuid, &quot;my_volume&quot;, voxels_metadata )</span>
+
+<span class="c"># Use the VoxelsAccessor convenience class to manipulate a particular data volume</span>
+<span class="n">dvid_volume</span> <span class="o">=</span> <span class="n">voxels</span><span class="o">.</span><span class="n">VoxelsAccessor</span><span class="p">(</span> <span class="n">connection</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="s">&quot;my_volume&quot;</span> <span class="p">)</span>
+
+<span class="c"># Read from it</span>
+<span class="n">cutout_array</span> <span class="o">=</span> <span class="n">dvid_volume</span><span class="o">.</span><span class="n">get_ndarray</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">30</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">110</span><span class="p">,</span><span class="mi">120</span><span class="p">,</span><span class="mi">130</span><span class="p">)</span> <span class="p">)</span> <span class="c"># First axis is channel.</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cutout_array</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">cutout_array</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c"># Modify it</span>
+<span class="n">updated_data</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span> <span class="p">)</span> <span class="c"># Must include all channels.</span>
+<span class="n">cutout_array</span> <span class="o">=</span> <span class="n">dvid_volume</span><span class="o">.</span><span class="n">post_ndarray</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">30</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">110</span><span class="p">,</span><span class="mi">120</span><span class="p">,</span><span class="mi">130</span><span class="p">),</span> <span class="n">updated_data</span> <span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="a-note-about-data-axes">
+<h2>A note about data axes<a class="headerlink" href="#a-note-about-data-axes" title="Permalink to this headline">¶</a></h2>
+<p>pydvid gives you ND-data as a <tt class="docutils literal"><span class="pre">numpy.ndarray</span></tt>.
+We use the same axis order convention that DVID uses (Fortran order).
+In the DVID API, channel (i.e. &#8216;Values&#8217; in DVID terminology) is not considered a separate array axis.
+However, in pydvid, a separate axis is <strong>always</strong> used to represent the channel, <strong>even for arrays with only a single channel</strong>.
+The channel axis is always in the first slicing position.</p>
+<p>For example: DVID considers a 3D <tt class="docutils literal"><span class="pre">grayscale8</span></tt> volume of size <tt class="docutils literal"><span class="pre">(80,90,100)</span></tt> to have 3 axes (say, <tt class="docutils literal"><span class="pre">&quot;X&quot;</span></tt>, <tt class="docutils literal"><span class="pre">&quot;Y&quot;</span></tt>, <tt class="docutils literal"><span class="pre">&quot;Z&quot;</span></tt>),
+but pydvid will give you a 4D array of shape <tt class="docutils literal"><span class="pre">(1,80,90,100)</span></tt>, indexed by <tt class="docutils literal"><span class="pre">my_array[c,x,y,z]</span></tt>.
+Again, note that the first axis is always <tt class="docutils literal"><span class="pre">'c'</span></tt> (channel) for all nd-arrays returned by pydvid.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Quickstart</a><ul>
+<li><a class="reference internal" href="#a-note-about-data-axes">A note about data axes</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="install.html"
+                        title="previous chapter">Installation and Dependencies</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="reference.html"
+                        title="next chapter">API Reference</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/quickstart.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="reference.html" title="API Reference"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Installation and Dependencies"
+             >previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>
