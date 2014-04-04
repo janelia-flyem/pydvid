@@ -7,7 +7,7 @@ This repository holds descriptions of each non-standard Media Type (formerly kno
 This repository contains files describing media types and REST APIs.
 
 Different media types are defined
-with a *{schema}.json* in JSON schema format.  There are also *{schema}-example.json* that gives an example
+with a *{schema}.json* in JSON schema format.  There are also *{schema}.example.json* that gives an example
 implementation of the corresonding schema.
 
 REST APIs for each service should be specified in RAML format.
@@ -32,20 +32,19 @@ An example of an online schema validator:
 
 Guidelines for using JSON schema in FlyEM:
 
-* JSON schema files should have the following naming convention <service-name>-<keyword>v<x.xx>.schema.json.  In some cases, a schema will be generic to many services and <service-name> can be ommitted.
+* JSON schema files should have the following naming convention {service-name}-{keyword}v{x.xx}.schema.json.  In some cases, a schema will be generic to many services and {service-name} can be ommitted.
 * Each JSON schema and all of its versions should be in a separate directory.
 * JSON schema should contain the version number of the schema.  The name of the file should match this version number.  Old versions of a JSON schema should remain in the repo.  Minor version changes such as 0.31 to 0.32 indicate backward compliance.  Version changes from 0.3 to 0.4 indicate incompatibility.
 * The current JSON schema should have an example (replace 'schema' with 'example' in the name).
-* JSON schema should explicitly have a mandatory "version" property.  If a client sends JSON with an old version, the server should notify the user that it is using a deprecated version.
+* JSON schema should have a mandatory "version" property.  If a client sends JSON with an old version in a property field, the server should notify the client that it is using a deprecated version.
 
 ### Defining custom RAML
 
-Web services should have a RESTful API documented in [RAML](http://raml.org).  Please consult examples
-such as for the [serviceproxy](https://github.com/janelia-flyem/serviceproxy)
+Web services should define a RESTful API in [RAML](http://raml.org).  Please consult examples, such as [serviceproxy](https://github.com/janelia-flyem/serviceproxy).
 
 Guidelines for using RAML interfaces in FlyEM:
 
-* RAML should have the following naming conventions <service-name>v<x.xx>.raml.
+* RAML should have the following naming conventions {service-name}v{x.xx}.raml.
 * Each RAML and all of its version should be in a separate directory.
 * RAML versioning should follow the conventions defined for JSON schema.
 * Services should return the RAML interface using the URI /interface
