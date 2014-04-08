@@ -1,9 +1,11 @@
 {
     "$schema": "http://json-schema.org/schema#",
+    "version" : "0.01",
 
     "type" : "object",
     "required" : ["Datasets"],
     "properties" : {
+        "version" : { "type" : "string" },
         "Datasets" : {
             "type" : "array",
             "items" : {

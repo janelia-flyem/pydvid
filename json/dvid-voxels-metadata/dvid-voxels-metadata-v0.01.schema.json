@@ -1,5 +1,7 @@
 {
     "$schema": "http://json-schema.org/schema#",
+    "version" : "0.01",
+    
     "title": "N-dimensional Image Data",
     "description": "Supplies the meta data necessary to interpret N-dimensional image data returned by DVID",
     "type": "object",
@@ -48,6 +50,7 @@
         }
     },
     "properties": {
+        "version" : { "type" : "string" },
         "Axes" : {
             "description": "Specifies the dimensions of the image. Order of the axes within the list specifies the ordering of the data. The first object in the list corresponds to the dimension whose index varies most rapidly as we move through the data bytes. The second object in the list corresponds to the 2nd most rapidly changing index, and so on.",
             "type": "array",
