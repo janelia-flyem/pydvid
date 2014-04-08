@@ -20,7 +20,7 @@
                 "Units": {
                     "type": "string",
                     "description": "The units of length of a voxel in this dimension.",
-                    "enum": ["nanometers", "micrometers", "millimeters"]
+                    "enum": ["nanometers", "micrometers", "millimeters", ""]
                 },
                 "Size": {
                     "type": "integer",
