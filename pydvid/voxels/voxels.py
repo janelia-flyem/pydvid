@@ -31,9 +31,10 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
     ##message_json = voxels_metadata.to_json()
 
     # For now, we simply hard-code these settings.
-    message_data = { "BlockSize" : "32,32,32",
-                     "VoxelSize" : "1.0,1.0,1.0",
-                     "VoxelUnits" : "nanometers,nanometers,nanometers" }
+    n_dims = len(voxels_metadata.shape)-1
+    message_data = { "BlockSize" : ",".join( ("32",)*n_dims ),
+                     "VoxelSize" : ",".join( ("1.0",)*n_dims ),
+                     "VoxelUnits" : ",".join( ("nanometers",)*n_dims ) }
     message_json = json.dumps(message_data) 
     
     headers = { "Content-Type" : "text/json" }
