@@ -287,6 +287,7 @@ class TestVoxelsAccessor(object):
 
         # Use the VoxelsAccessor convenience class to manipulate a particular data volume     
         dvid_volume = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
+        # print dvid_volume.axiskeys, dvid_volume.dtype, dvid_volume.minindex, dvid_volume.shape
          
         # Add some data
         updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
