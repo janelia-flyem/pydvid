@@ -6,7 +6,7 @@ packages=['pydvid',
           'pydvid.voxels',
           'pydvid.gui' ]
 
-package_data={'pydvid': ['dvidschemas/*.jsonschema']}
+package_data={'pydvid': ['dvidschemas/json/*/*.schema.json']}
 
 setup(name='pydvid',
       version='0.1',
