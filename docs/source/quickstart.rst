@@ -67,8 +67,8 @@ DVID uses a signed coordinate system, but pydvid does not yet support signed coo
 If you need to access a region below the (0,0) coordinate, you're out of luck.
 
 Otherwise, pydvid uses the *same* coordinate system as DVID, regardless of which voxels contain valid data.  \
-The `VoxelsAccessor.shape` attribute represents the upper extent of the volume stored in DVID, and the \
-`VoxelsAccessor.minindex` attribute represents the lower extent of the stored data.  \
+The ``VoxelsAccessor.shape`` attribute represents the upper extent of the volume stored in DVID, and the \
+``VoxelsAccessor.minindex`` attribute represents the lower extent of the stored data.  \
 Attempting to read data above or below those two extents may result in error.
 
 For example, for the volume shown in the diagram below, you could access the entire stored volume as follows:
