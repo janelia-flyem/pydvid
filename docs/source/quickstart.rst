@@ -1,3 +1,5 @@
+.. _quickstart:
+
 ==========
 Quickstart
 ==========
@@ -43,6 +45,8 @@ Quickstart
     assert isinstance(cutout_array, numpy.ndarray)
     assert cutout_array.shape == (4,100,100,100)
 
+Please see the :py:class:`pydvid.voxels.VoxelsAccessor` documentation for more details regarding permitted slicing syntax.
+
 A note about data axes
 ----------------------
 
@@ -55,4 +59,32 @@ The channel axis is always in the first slicing position.
 For example: DVID considers a 3D ``grayscale8`` volume of size ``(80,90,100)`` to have 3 axes (say, ``"X"``, ``"Y"``, ``"Z"``), 
 but pydvid will give you a 4D array of shape ``(1,80,90,100)``, indexed by ``my_array[c,x,y,z]``.  
 Again, note that the first axis is always ``'c'`` (channel) for all nd-arrays returned by pydvid. 
+
+Notes about the coordinate system
+---------------------------------
+
+DVID uses a signed coordinate system, but pydvid does not yet support signed coordinates.
+If you need to access a region below the (0,0) coordinate, you're out of luck.
+
+Otherwise, pydvid uses the *same* coordinate system as DVID, regardless of which voxels contain valid data.  \
+The `VoxelsAccessor.shape` attribute represents the upper extent of the volume stored in DVID, and the \
+`VoxelsAccessor.minindex` attribute represents the lower extent of the stored data.  \
+Attempting to read data above or below those two extents may result in error.
+
+For example, for the volume shown in the diagram below, you could access the entire stored volume as follows:
+
+::
+
+    dvid_volume = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
+    
+    # Retrieve all stored voxels
+    start, stop = dvid_volume.minindex, dvid_volume.shape
+    cutout_array = dvid_volume.get_ndarray( start, stop )
+
+    # Note the shape of the result
+    assert (cutout_array.shape == numpy.array(start) - stop).all()
+
+.. figure:: images/coordinates.svg
+   :scale: 100  %
+   :alt: Coordinate system diagram
 

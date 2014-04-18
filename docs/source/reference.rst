@@ -26,6 +26,8 @@ voxels
 
 .. note:: All members of this module can be used directly from the ``pydvid.voxels`` namespace, e.g. ``pydvid.voxels.VoxelsAccessor``
 
+.. note:: Please see the :ref:`quickstart <quickstart>` documentation for examples and important usage notes regarding the ``voxels`` API.
+
 .. currentmodule:: pydvid.voxels
 
 .. automodule:: pydvid.voxels.voxels

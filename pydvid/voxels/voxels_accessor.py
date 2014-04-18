@@ -15,6 +15,7 @@ class VoxelsAccessor(object):
         """
         :param uuid: The node uuid
         :param data_name: The name of the volume
+        :param connection: An `httplib.HTTPConnection` instance or something like it.
         """
         self.uuid = uuid
         self.data_name = data_name
