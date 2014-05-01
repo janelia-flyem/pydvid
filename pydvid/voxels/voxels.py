@@ -142,8 +142,8 @@ def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=Fa
     """
     shape = volume_shape
     start, stop, shape = map( numpy.array, (start, stop, shape) )
-    assert start[0] == 0, "Subvolume get/post must include all channels."
-    assert stop[0] == shape[0], "Subvolume get/post must include all channels."
+    assert start[0] == 0, "Subvolume get/post must include all channels.  Invalid roi: {}, {}".format( start, stop )
+    assert stop[0] == shape[0], "Subvolume get/post must include all channels.  Invalid roi: {}, {}".format( start, stop )
     assert len(start) == len(stop) == len(shape), \
         "start/stop/shape mismatch: {}/{}/{}".format( start, stop, shape )
     assert (start < stop).all(), "Invalid start/stop: {}/{}".format( start, stop )
