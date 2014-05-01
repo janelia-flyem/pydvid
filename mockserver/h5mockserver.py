@@ -657,7 +657,7 @@ class H5MockServerDataFile(object):
         #       If we were using this mock server for more than just testing, 
         #        we would transpose to C-order before storing data and transpose 
         #        back to F-order when retrieving data.
-        volume_dset = volumes_group.create_dataset( volume_name, data=volume )
+        volume_dset = volumes_group.create_dataset( volume_name, data=volume, chunks=True )
         volume_dset.attrs['dvid_metadata'] = json.dumps( voxels_metadata )
         
         # Add a link to this volume in every node
