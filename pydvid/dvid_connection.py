@@ -27,11 +27,11 @@ class DvidConnection(object):
             # Get/create the HTTPConnection associated with the current thread
             thread_id = threading.current_thread().ident
             try:
-                return self._connections[thread_id]
+                return getattr(self._connections[thread_id], name)
             except:
                 connection = httplib.HTTPConnection(self.hostname)
                 self._connections[thread_id] = connection
-                return self._connections[thread_id]
+                return getattr(self._connections[thread_id], name)
 
     def close(self):
         # Close all underlying connections for all threads.
