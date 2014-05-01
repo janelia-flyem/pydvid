@@ -182,6 +182,8 @@ class ContentsBrowser(QDialog):
             self._populate_datasets_tree()
             self._populate_node_list(-1)
 
+        self._connect_button.setEnabled(False)
+
         enable_contents = self._datasets_info is not None
         self._data_groupbox.setEnabled(enable_contents)
         self._node_groupbox.setEnabled(enable_contents)
