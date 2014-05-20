@@ -42,13 +42,12 @@ voxels
 
 .. currentmodule:: pydvid.voxels.voxels_accessor
 
+.. _slicing:
+
 .. autoclass:: pydvid.voxels.VoxelsAccessor
    :members:
 
    .. automethod:: __init__
-
-   .. _slicing:
-
    .. automethod:: __getitem__
    .. automethod:: __setitem__
    
