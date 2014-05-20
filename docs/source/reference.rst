@@ -46,6 +46,9 @@ voxels
    :members:
 
    .. automethod:: __init__
+
+   .. _slicing:
+
    .. automethod:: __getitem__
    .. automethod:: __setitem__
    

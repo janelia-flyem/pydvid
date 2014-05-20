@@ -47,6 +47,29 @@ Quickstart
 
 Please see the :py:class:`pydvid.voxels.VoxelsAccessor` documentation for more details regarding permitted slicing syntax.
 
+Why should I use pydvid?
+------------------------
+
+For simple use-cases, it is feasible to access the DVID REST API directly.  
+But pydvid offers the following advantages over direct access to the DVID API:
+
+* numpy-like access to ND data volumes:
+
+   * familiar :ref:`slicing syntax <slicing>` for read/write
+   * DVID concepts mapped to numpy concepts: multi-channel array with numpy.dtype
+
+* Efficient encoding/transmission of large volumes (in chunks)
+* JSON schema validation facilities
+* Convenience utilities for creating new DVID datasets
+* Lots of error checking for common mistakes
+
+   * Detailed error messages when something goes wrong
+
+* **Shared code base**: If we all use pydvid, then we can update our code in one place as the DVID API expands and evolves.  
+  If there's something you don't like about pydvid, open a new issue on the github `issue tracker`_, or (better yet) submit a pull request!
+  
+.. _issue tracker: https://github.com/janelia-flyem/pydvid/issues
+
 A note about data axes
 ----------------------
 
@@ -88,3 +111,25 @@ For example, for the volume shown in the diagram below, you could access the ent
    :scale: 100  %
    :alt: Coordinate system diagram
 
+Roadmap
+-------
+
+pydvid is pretty small right now, but we hope it will gracefully absorb more functionality:
+
+* Pooled connections for clients who don't want to manage their own connections
+* Access DVID data via other message types (e.g. PNG, JPEG, etc.)
+* Sparse volume access
+* Stricter JSON schema validation
+* Testing against an actual DVID server instead of relying on the builtin mock server
+
+Open questions
+--------------
+
+* Should we change the implementation to use the `Requests`_ library instead of the standard Python httplib?
+
+  * Pro: Cleaner API, builtin connection pooling
+  * Con: Introduces an extra dependency
+
+.. _Requests: http://docs.python-requests.org/en/latest/
+
+   
