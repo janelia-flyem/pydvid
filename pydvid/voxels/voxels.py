@@ -1,7 +1,6 @@
 import json
 import httplib
 import contextlib
-import StringIO
 
 import numpy
 
@@ -77,10 +76,15 @@ def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new
     _validate_query_bounds( start, stop, voxels_metadata.shape, allow_overflow_extents=True )
     codec = VoxelsNddataCodec( voxels_metadata )
     rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop )
-    body_data_stream = StringIO.StringIO()
-    codec.encode_from_ndarray(body_data_stream, new_data)
-    headers = { "Content-Type" : VoxelsNddataCodec.VOLUME_MIMETYPE }
-    connection.request( "POST", rest_query, body=body_data_stream.getvalue(), headers=headers )
+    body_data_stream = codec.create_encoded_stream_from_ndarray(new_data)
+    
+    # Slightly tricky here:
+    # The httplib docs say that we can only send a stream that has a fileno() method,
+    #  but it turns out we can send any stream as long as we provide our own content-length header.
+    headers = { "Content-Type" : VoxelsNddataCodec.VOLUME_MIMETYPE,
+                "Content-Length" : codec.calculate_buffer_len(new_data.shape) }
+    
+    connection.request( "POST", rest_query, body=body_data_stream, headers=headers )
     with contextlib.closing( connection.getresponse() ) as response:
         #if response.status != httplib.NO_CONTENT:
         if response.status != httplib.OK:

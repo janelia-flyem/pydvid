@@ -36,6 +36,18 @@ class TestVoxelsNddataCodec(object):
              
             self._assert_matching(roundtrip_data, data)
  
+    def test_encoded_stream(self):
+        data = numpy.random.randint(0,255, (3, 100, 200)).astype(numpy.uint8)
+        
+        metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
+        codec = VoxelsNddataCodec( metadata )
+        
+        stream = codec.create_encoded_stream_from_ndarray(data)
+        roundtrip_data = codec.decode_to_ndarray(stream, data.shape)
+        assert roundtrip_data.flags['F_CONTIGUOUS']
+        
+        self._assert_matching(roundtrip_data, data)
+ 
     def _assert_matching(self, data, expected):
         assert expected is not data
         assert expected.dtype == data.dtype
