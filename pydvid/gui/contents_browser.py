@@ -106,6 +106,8 @@ class ContentsBrowser(QDialog):
         new_data_edit.textEdited.connect( self._update_display )
         full_url_label = QLabel(parent=self)
         full_url_label.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Maximum )
+        text_flags = full_url_label.textInteractionFlags()
+        full_url_label.setTextInteractionFlags( text_flags | Qt.TextSelectableByMouse )
 
         new_data_layout = QVBoxLayout()
         new_data_layout.addWidget( new_data_edit )
