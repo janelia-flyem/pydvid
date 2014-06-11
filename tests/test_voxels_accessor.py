@@ -99,6 +99,19 @@ class TestVoxelsAccessor(object):
          
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
+
+    def test_get_ndarray_throttled(self):
+        """
+        Get some data from the server and check it.
+        """
+        # Retrieve from server
+        start, stop = (0,9,5,50,0), (4,10,20,150,3)
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name, throttle=True )
+        subvolume = dvid_vol.get_ndarray( start, stop )
+         
+        # Compare to file
+        self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
+     
      
     def _test_retrieve_volume(self, h5filename, uuid, data_name, start, stop):
         """

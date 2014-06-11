@@ -1,5 +1,11 @@
+import time
+import httplib
+import functools
+
 import numpy
 import voxels
+
+from pydvid.errors import DvidHttpError
 
 class VoxelsAccessor(object):
     """
@@ -11,15 +17,27 @@ class VoxelsAccessor(object):
     
     * Allow users to provide a pre-allocated array when requesting data
     """
-    def __init__(self, connection, uuid, data_name):
+    def __init__(self, connection, uuid, data_name, throttle=False, retry_timeout=60.0, retry_interval=1.0):
         """
         :param uuid: The node uuid
         :param data_name: The name of the volume
-        :param connection: An `httplib.HTTPConnection` instance or something like it.
+        :param connection: An ``httplib.HTTPConnection`` instance or something like it.
+        :param throttle: Enable the DVID 'throttle' flag for all get/post requests
+        :param retry_interval: Time to wait before repeating a failed get/post.
+        :param retry_timeout: Total time to spend repeating failed requests before giving up.
+                              (Set to 0 to prevent retries.)
+        
+        .. note: When DVID is overloaded, it may indicate its busy status by returning a ``503`` 
+                 (service unavailable) error in response to a get/post request.  In that case, 
+                 the get/post methods below will automatically repeat the failed request until 
+                 the `retry_timeout` is reached.
         """
         self.uuid = uuid
         self.data_name = data_name
         self._connection = connection
+        self._throttle = throttle
+        self._retry_interval = retry_interval
+        self._retry_timeout = retry_timeout
 
         # Request this volume's metadata from DVID
         self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
@@ -59,22 +77,66 @@ class VoxelsAccessor(object):
         """
         return self.voxels_metadata.axiskeys
 
+    def _auto_retry(func):
+        """
+        Decorator.  If the function raises a DvidHttpError with 
+        the 503 (SERVICE_UNAVAILABLE) status code, try again 
+        until successful or a timeout is reached.
+        """
+        @functools.wraps(func)
+        def _retry_wrapper( self, *args, **kwargs ):
+            remaining_timeout = self._retry_timeout
+            while True:
+                try:
+                    return func(self, *args, **kwargs )
+                except DvidHttpError as ex:
+                    # DVID returns a 503 error to indicate that it is 'busy'
+                    # Simply repeat the request until we timeout. 
+                    if ex.status_code != httplib.SERVICE_UNAVAILABLE \
+                       or remaining_timeout <= 0.0:
+                        raise
+                    else:
+                        time.sleep( self._retry_interval )
+                        remaining_timeout -= self._retry_interval
+        _retry_wrapper.__wrapped__ = func # Emulate python 3 behavior of @wraps
+        return _retry_wrapper
+
+    @_auto_retry
     def get_ndarray( self, start, stop ):
         """
         Request the subvolume specified by the given start and stop pixel coordinates.
         """
-        return voxels.get_ndarray( self._connection, self.uuid, self.data_name, self.voxels_metadata, start, stop )
+        return voxels.get_ndarray( self._connection, 
+                                   self.uuid, 
+                                   self.data_name, 
+                                   self.voxels_metadata, 
+                                   start, 
+                                   stop, 
+                                   self._throttle )
 
     def post_ndarray( self, start, stop, new_data ):
         """
         Overwrite subvolume specified by the given start and stop pixel coordinates with new_data.
         """
-        voxels.post_ndarray( self._connection, self.uuid, self.data_name, self.voxels_metadata, start, stop, new_data )
+        # Post the data (with auto-retry)
+        self._post_ndarray(start, stop, new_data)
+
         if ( numpy.array(stop) > self.shape ).any() or \
            ( numpy.array(start) < self.minindex ).any():
-            # It looks like this post will UPDATE the volume's extents.
+            # It looks like this post UPDATED the volume's extents.
             # Therefore, RE-request this volume's metadata from DVID so we get the new volume shape
             self.voxels_metadata = voxels.get_metadata( self._connection, self.uuid, self.data_name )        
+
+    @_auto_retry
+    def _post_ndarray( self, start, stop, new_data ):
+        voxels.post_ndarray( self._connection, 
+                             self.uuid, 
+                             self.data_name, 
+                             self.voxels_metadata, 
+                             start, 
+                             stop, 
+                             new_data,
+                             self._throttle )
 
     def __getitem__(self, slicing):
         """
@@ -284,3 +346,4 @@ class VoxelsAccessor(object):
             s = ()
         
         return s
+
