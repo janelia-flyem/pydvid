@@ -36,8 +36,8 @@ class VoxelsAccessor(object):
         self.data_name = data_name
         self._connection = connection
         self._throttle = throttle
-        self._retry_interval = retry_interval
         self._retry_timeout = retry_timeout
+        self._retry_interval = retry_interval
 
         # Request this volume's metadata from DVID
         self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )

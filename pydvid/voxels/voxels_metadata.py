@@ -119,7 +119,8 @@ class VoxelsMetadata(dict):
         Example usage:
         
         .. code-block:: python
-           >>> metadata = VoxelsMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
+        
+           metadata = VoxelsMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
        
            # Customize: Adjust resolution for Z-axis
            assert metadata["Axes"][2]["Label"] == "Z"
