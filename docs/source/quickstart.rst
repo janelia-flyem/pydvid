@@ -58,7 +58,8 @@ But pydvid offers the following advantages over direct access to the DVID API:
    * familiar :ref:`slicing syntax <slicing>` for read/write
    * DVID concepts mapped to numpy concepts: multi-channel array with numpy.dtype
 
-* Efficient encoding/transmission of large volumes (in chunks)
+* Efficient (streaming) encoding/transmission of large volumes
+* Automatic retry when get/post is rejected due to DVID 'busy' state
 * JSON schema validation facilities
 * Convenience utilities for creating new DVID datasets
 * Lots of error checking for common mistakes
