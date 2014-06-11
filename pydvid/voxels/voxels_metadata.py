@@ -21,7 +21,7 @@ metadata_schema = pydvid.util.parse_schema( 'dvid-voxels-metadata-v0.01.schema.j
 class VoxelsMetadata(dict):
     """
     A dict subclass for the dvid nd-data metadata response.
-    Also provides the following convenience attributes: ``shape``, ``dtype``, ``axiskeys``
+    Also provides the following convenience attributes: ``minindex``, ``shape``, ``dtype``, ``axiskeys``
     """
     
     @property
@@ -118,20 +118,20 @@ class VoxelsMetadata(dict):
         
         Example usage:
         
-            metadata = VoxelsMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
-    
-            # Customize: Adjust resolution for Z-axis
-            assert metadata["Axes"][2]["Label"] == "Z"
-            metadata["Axes"][2]["Resolution"] = 6.0
-
-            # Customize: name channels
-            metadata["Values"][0]["Label"] = "intensity-R"
-            metadata["Values"][1]["Label"] = "intensity-G"
-            metadata["Values"][2]["Label"] = "intensity-B"
-
-            # Prepare for transmission: encode to json
-            jsontext = metadata.to_json()
-        
+        .. code-block:: python
+           >>> metadata = VoxelsMetadata.create_default_metadata( (3,100,200,300), numpy.uint8, 'cxyz', 1.5, "micrometers" )
+       
+           # Customize: Adjust resolution for Z-axis
+           assert metadata["Axes"][2]["Label"] == "Z"
+           metadata["Axes"][2]["Resolution"] = 6.0
+   
+           # Customize: name channels
+           metadata["Values"][0]["Label"] = "intensity-R"
+           metadata["Values"][1]["Label"] = "intensity-G"
+           metadata["Values"][2]["Label"] = "intensity-B"
+   
+           # Prepare for transmission: encode to json
+           jsontext = metadata.to_json()        
         """
         assert axiskeys[0] == 'c', "Channel axis must be first"
         assert len(axiskeys) == len(shape), "shape/axiskeys mismatch: {} doesn't match {}".format( axiskeys, shape )
