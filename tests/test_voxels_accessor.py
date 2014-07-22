@@ -283,7 +283,7 @@ class TestVoxelsAccessor(object):
         from pydvid import voxels, general
          
         # Open a connection to DVID
-        connection = httplib.HTTPConnection( "localhost:8000" )
+        connection = httplib.HTTPConnection( "localhost:8000", timeout=5.0 )
         
         # List the dataset roots: /api/datasets/list
         root_nodes_info = general.get_datasets_list( connection )
