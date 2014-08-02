@@ -34,7 +34,9 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
     message_data = { "BlockSize" : ",".join( ("32",)*n_dims ),
                      "VoxelSize" : ",".join( ("1.0",)*n_dims ),
                      "VoxelUnits" : ",".join( ("nanometers",)*n_dims ) }
-    message_json = json.dumps(message_data) 
+    properties = {}
+    properties["Properties"] = message_data
+    message_json = json.dumps(properties) 
     
     headers = { "Content-Type" : "text/json" }
     connection.request( "POST", rest_query, body=message_json, headers=headers )
