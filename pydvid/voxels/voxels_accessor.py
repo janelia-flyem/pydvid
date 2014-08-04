@@ -1,6 +1,7 @@
 import time
 import httplib
 import functools
+import warnings
 
 import numpy
 import voxels
@@ -17,15 +18,21 @@ class VoxelsAccessor(object):
     
     * Allow users to provide a pre-allocated array when requesting data
     """
-    def __init__(self, connection, uuid, data_name, throttle=False, retry_timeout=60.0, retry_interval=1.0):
+    
+    class ThrottleTimeoutException(Exception):
+        pass
+    
+    def __init__(self, connection, uuid, data_name, throttle=False, retry_timeout=60.0, retry_interval=1.0, warning_interval=30.0):
         """
         :param uuid: The node uuid
         :param data_name: The name of the volume
         :param connection: An ``httplib.HTTPConnection`` instance or something like it.
         :param throttle: Enable the DVID 'throttle' flag for all get/post requests
-        :param retry_interval: Time to wait before repeating a failed get/post.
         :param retry_timeout: Total time to spend repeating failed requests before giving up.
                               (Set to 0 to prevent retries.)
+        :param retry_interval: Time to wait before repeating a failed get/post.
+        :param warning_interval: If the retry period exceeds this interval (but hasn't 
+                                 hit the retry_timeout yet), a warning is emitted.
         
         .. note: When DVID is overloaded, it may indicate its busy status by returning a ``503`` 
                  (service unavailable) error in response to a get/post request.  In that case, 
@@ -38,6 +45,7 @@ class VoxelsAccessor(object):
         self._throttle = throttle
         self._retry_timeout = retry_timeout
         self._retry_interval = retry_interval
+        self._warning_interval = warning_interval
 
         # Request this volume's metadata from DVID
         self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
@@ -85,19 +93,48 @@ class VoxelsAccessor(object):
         """
         @functools.wraps(func)
         def _retry_wrapper( self, *args, **kwargs ):
-            remaining_timeout = self._retry_timeout
-            while True:
-                try:
-                    return func(self, *args, **kwargs )
-                except DvidHttpError as ex:
-                    # DVID returns a 503 error to indicate that it is 'busy'
-                    # Simply repeat the request until we timeout. 
-                    if ex.status_code != httplib.SERVICE_UNAVAILABLE \
-                       or remaining_timeout <= 0.0:
-                        raise
-                    else:
-                        time.sleep( self._retry_interval )
-                        remaining_timeout -= self._retry_interval
+            try:
+                # Fast path for the first attempt
+                return func(self, *args, **kwargs)
+            except DvidHttpError as ex:
+                if ex.status_code != httplib.SERVICE_UNAVAILABLE:
+                    raise # not 503: this is a real problem
+                elif self._retry_timeout <= self._retry_interval:
+                    raise VoxelsAccessor.ThrottleTimeoutException( 
+                        "Timeout due to 503 response. "
+                        "VoxelsAccessor auto-retry is disabled. "
+                        "(timeout <= retry: {} <= {})"
+                        .format( self._retry_timeout, self._retry_interval ) )
+                
+                start_time = time.time()
+                time_so_far = 0.0
+                last_warning_time = 0.0
+                n_attempts = 1
+
+                # Keep retrying until we timeout
+                while time_so_far < self._retry_timeout:
+                    if time_so_far - last_warning_time > self._warning_interval:
+                        warnings.warn("DVID Server has been busy for {:.1f} seconds.  Still retrying..."
+                                      .format( time_so_far ))
+                        last_warning_time = time_so_far
+                    time.sleep( self._retry_interval )
+                    n_attempts += 1
+                    try:
+                        return func(self, *args, **kwargs)
+                    except DvidHttpError as ex:
+                        if ex.status_code == httplib.SERVICE_UNAVAILABLE:
+                            # 503 error from DVID indicates 'busy'
+                            # We'll keep looping...
+                            time_so_far = time.time() - start_time
+                        else:
+                            raise # not 503: this is a real problem
+
+                # Loop finished: we timed out.
+                raise VoxelsAccessor.ThrottleTimeoutException( 
+                    "Timeout due to repeated 503 responses: "
+                    "DVID Server is still too busy after {} attempts over {:.1f} seconds"
+                    .format(n_attempts, time_so_far) )
+
         _retry_wrapper.__wrapped__ = func # Emulate python 3 behavior of @wraps
         return _retry_wrapper
 
