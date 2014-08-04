@@ -5,7 +5,7 @@ Maintenance
 JSON Schema Repo
 ================
 
-pydvid includes the `dvidschema`_ repo as a `git subtree` located at prefix pydvid/dvidschema.  
+pydvid includes the `service-contracts`_ repo as a `git subtree` located at prefix pydvid/dvidschema.  
 Older versionos of git do not include the ``subtree`` command, so you may need to upgrade git and/or 
 manually install the ``subtree`` command into your git installation.
 
@@ -14,13 +14,13 @@ Changes to the dvidschema repo must be pulled into pydvid using ``git subtree pu
 .. code-block:: bash
 
     # Add the dvidschema repo as a remote if you haven't yet...
-    git remote add -f janelia-dvidschema https://github.com/janelia-flyem/dvidschema
+    git remote add -f janelia-service-contracts https://github.com/janelia-flyem/service-contracts
     
-    # Pull the most recent changes from dvidschema into our own repo's subtree
-    git fetch janelia-dvidschema
-    git subtree pull --prefix pydvid/dvidschema janelia-dvidschema master
+    # Pull the most recent changes from service-contracts into our own repo's subtree
+    git fetch janelia-service-contracts
+    git subtree pull --prefix pydvid/dvidschemas janelia-service-contracts master
 
-.. _dvidschema: https://github.com/janelia-flyem/dvidschema
+.. _service-contracts: https://github.com/janelia-flyem/service-contracts
 
 
 Testing
