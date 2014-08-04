@@ -10,13 +10,14 @@ class DvidConnection(object):
       but really each thread gets access to its own HTTPConnection.
     """
 
-    def __init__(self, hostname):
+    def __init__(self, hostname, timeout=None):
         """
         hostname: The DVID server hostname, e.g. 'emdata1' or 'localhost:8000'
         """
         # Open a connection to the server
         self.hostname = hostname
         self._connections = {}
+        self.timeout = timeout
     
     def __getattribute__(self, name):
         try:
@@ -29,7 +30,7 @@ class DvidConnection(object):
             try:
                 return getattr(self._connections[thread_id], name)
             except:
-                connection = httplib.HTTPConnection(self.hostname)
+                connection = httplib.HTTPConnection(self.hostname, timeout=self.timeout)
                 self._connections[thread_id] = connection
                 return getattr(self._connections[thread_id], name)
 
