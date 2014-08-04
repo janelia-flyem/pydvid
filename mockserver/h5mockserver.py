@@ -318,9 +318,9 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         All parameters are strings from the REST string.
         """
-        #self.server.busy_flag = not self.server.busy_flag
-        #if self.server.busy_flag:
-        #    raise self.RequestError( httplib.SERVICE_UNAVAILABLE, "I'm busy. Try again later." )
+        if self.server.busy_count:
+            self.server.busy_count -= 1
+            raise self.RequestError( httplib.SERVICE_UNAVAILABLE, "I'm busy. Try again later." )
         
         dataset = self._get_h5_dataset(uuid, dataname)
         roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
@@ -559,7 +559,7 @@ class H5MockServer(HTTPServer):
         self.shutdown_completed_event = threading.Event()
         
         # Useful for testing 503 error handling behavior
-        self.busy_flag = False
+        self.busy_count = 0
     
     def serve_forever(self):
         try:

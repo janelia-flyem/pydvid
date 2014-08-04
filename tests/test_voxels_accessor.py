@@ -96,7 +96,7 @@ class TestVoxelsAccessor(object):
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol.get_ndarray( start, stop )
-         
+          
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
 
@@ -111,16 +111,20 @@ class TestVoxelsAccessor(object):
          
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
+
+#     def test_get_ndarray_throttled(self):
+#         """
+#         Get some data from the server and check it.
+#         """
+#         # Retrieve from server
+#         start, stop = (0,9,5,50,0), (4,10,20,150,3)
+#         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name, 
+#                                           throttle=True, retry_timeout=7.0, warning_interval=3.0 )
+#         subvolume = dvid_vol.get_ndarray( start, stop )
+#          
+#         # Compare to file
+#         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
      
-     
-    def _test_retrieve_volume(self, h5filename, uuid, data_name, start, stop):
-        """
-        h5filename: The h5 file to compare against
-        h5group: The hdf5 group, also used as the uuid of the dvid dataset
-        h5dataset: The dataset name, also used as the name of the dvid dataset
-        start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
-        """
- 
     def test_post_ndarray(self):
         """
         Modify a remote subvolume and verify that the server wrote it.
@@ -128,106 +132,106 @@ class TestVoxelsAccessor(object):
         # Cutout dims
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
         shape = numpy.subtract( stop, start )
- 
+  
         # Generate test data
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
- 
+  
         # Send to server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         dvid_vol.post_ndarray(start, stop, subvolume)
-         
+          
         # Check file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)        
- 
+  
     def test_post_slicing(self):
         # Cutout dims
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
         shape = numpy.subtract( stop, start )
- 
+  
         # Generate test data
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
- 
+  
         # Send to server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         dvid_vol[0:4,9:10,5:20,50:150,0:3] = subvolume
-         
+          
         # Check file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)        
-
+ 
     def test_post_reduced_dim_slicing(self):
         # Cutout dims
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
         shape = numpy.subtract( stop, start )
- 
+  
         # Generate test data
         subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
- 
+  
         # Send to server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         dvid_vol[0:4,9,5:20,50:150,0:3] = subvolume[:,0,...]
-         
+          
         # Check file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)        
-
+ 
     def test_get_full_volume_via_slicing(self):
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume1 = dvid_vol[:]
         start = (0,) * len(self.original_data.shape)
         stop = self.original_data.shape
-         
+          
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume1)        
-
+ 
         # Alternate sytax: Use Ellipsis
         subvolume2 = dvid_vol[...]
         # Results should match
         assert (subvolume1 == subvolume2).all()         
- 
+  
     def test_get_full_slicing(self):
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, 5:20, 50:150, 0:3]
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
-         
+          
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
-     
+      
     def test_get_partial_slicing(self):
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, 5:20, 50:150]
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
-        
+         
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
-
+ 
     def test_get_ellipsis_slicing(self):
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, ..., 1:2]
         start, stop = (0,9,0,0,1), (4,10,100,200,2)
-        
+         
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
-
+ 
     def test_get_reduced_dim_slicing(self):
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4, 9:10, 3, :, 1:2] # Note that the third dimension will be dropped...
         start, stop = (0,9,3,0,1), (4,10,4,200,2) 
-        
+         
         # Check dimensionality/shape of returned volume
         full_shape = numpy.array(stop) - start
         reduced_shape = list(full_shape[:2]) + list(full_shape[3:])
         assert subvolume.shape == tuple(reduced_shape)
-
+ 
         # Before we compare to the file, re-insert the dropped axis
         subvolume = subvolume[:,:,numpy.newaxis,...]
-        
+         
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
-
+ 
     def test_get_channel_slicing(self):
         """
         Test that slicing in the channel dimension works.
@@ -237,28 +241,28 @@ class TestVoxelsAccessor(object):
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[1:3, 9:10, 5:20, 50:150]
-        
+         
         # Compare to file
         start, stop = (1,9,5,50,0), (3,10,20,150,3)
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
-
+ 
     def test_get_stepped_slicing(self):
         """
         """
         # Retrieve from server
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
         subvolume = dvid_vol[0:4:2, 1:10:3, 5:20:5, 50:150:10]
-        
+         
         # Compare to file
         full_start = (0,) * len( self.original_data.shape )
         full_stop = self.original_data.shape
         full_stored_volume = self._get_subvolume_from_file(self.test_filepath, self.data_uuid, self.data_name, full_start, full_stop)
         stored_stepped_volume = full_stored_volume[0:4:2, 1:10:3, 5:20:5, 50:150:10]
-
+ 
         assert subvolume.shape == stored_stepped_volume.shape
         assert subvolume.dtype == stored_stepped_volume.dtype
         assert (subvolume == stored_stepped_volume).all()
-
+ 
     def _check_subvolume(self, h5filename, uuid, data_name, start, stop, subvolume):
         """
         Compare a given subvolume to an hdf5 dataset.  Assert if they don't match.
@@ -270,52 +274,52 @@ class TestVoxelsAccessor(object):
         assert stored_data.dtype == subvolume.dtype
         assert ( subvolume == stored_data ).all(),\
             "Data from server didn't match data from file!" 
- 
+  
     def _get_subvolume_from_file(self, h5filename, uuid, data_name, start, stop):
         slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
         with h5py.File(h5filename, 'r') as f:
             return f["all_nodes"][uuid][data_name][slicing]
- 
+  
     def test_zz_quickstart_usage(self):
         import json
         import httplib
         import numpy
         from pydvid import voxels, general
-         
+          
         # Open a connection to DVID
         connection = httplib.HTTPConnection( "localhost:8000", timeout=5.0 )
-        
+         
         # List the dataset roots: /api/datasets/list
         root_nodes_info = general.get_datasets_list( connection )
         # print json.dumps( root_nodes_info, indent=4 )
-
+ 
         # Get detailed dataset info: /api/datasets/info
         dataset_details = general.get_datasets_info( connection )
         # print json.dumps( dataset_details, indent=4 )
-        
+         
         # Create a new remote volume
         uuid = 'abcde'
         voxels_metadata = voxels.VoxelsMetadata.create_default_metadata( (4,0,0,0), numpy.uint8, 'cxyz', 1.0, "" )
         voxels.create_new( connection, uuid, "my_volume", voxels_metadata )
-
+ 
         # Use the VoxelsAccessor convenience class to manipulate a particular data volume     
         dvid_volume = voxels.VoxelsAccessor( connection, uuid, "my_volume" )
         # print dvid_volume.axiskeys, dvid_volume.dtype, dvid_volume.minindex, dvid_volume.shape
-         
+          
         # Add some data
         updated_data = numpy.ones( (4,100,100,100), dtype=numpy.uint8 ) # Must include all channels.
         dvid_volume[:, 10:110, 20:120, 30:130] = updated_data
         # OR:
         dvid_volume.post_ndarray( (0,10,20,30), (4,110,120,130), updated_data )
-        
+         
         # Read from it (First axis is channel.)
         cutout_array = dvid_volume[:, 10:110, 20:120, 30:130]
         # OR:
         cutout_array = dvid_volume.get_ndarray( (0,10,20,30), (4,110,120,130) )
-
+ 
         assert isinstance(cutout_array, numpy.ndarray)
         assert cutout_array.shape == (4,100,100,100)
-     
+
 if __name__ == "__main__":
     import sys
     import nose
