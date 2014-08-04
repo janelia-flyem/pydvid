@@ -27,20 +27,22 @@ class TestVolumeInfo( object ):
                 "Offset" : 0
             }
         ],
-        "Values": [
-            {
-                "DataType": "uint8",
-                "Label": "intensity-R"
-            },
-            {
-                "DataType": "uint8",
-                "Label": "intensity-G"
-            },
-            {
-                "DataType": "uint8",
-                "Label": "intensity-B"
-            }
-        ]
+        "Properties" : {
+            "Values": [
+                {
+                    "DataType": "uint8",
+                    "Label": "intensity-R"
+                },
+                {
+                    "DataType": "uint8",
+                    "Label": "intensity-G"
+                },
+                {
+                    "DataType": "uint8",
+                    "Label": "intensity-B"
+                }
+            ]
+        }
     }
     """
 
@@ -55,19 +57,19 @@ class TestVolumeInfo( object ):
     
     def test_create_default_metadata(self):
         metadata = VoxelsMetadata.create_default_metadata( (2,10,11), numpy.int64, "cxy", 1.5, "nanometers" )
-        metadata["Values"][0]["Label"] = "R"
-        metadata["Values"][1]["Label"] = "G"
+        metadata["Properties"]["Values"][0]["Label"] = "R"
+        metadata["Properties"]["Values"][1]["Label"] = "G"
         
         assert len( metadata["Axes"] ) == 2
         assert metadata["Axes"][0]["Label"] == "X"
         assert metadata["Axes"][0]["Size"] == 10
         assert metadata["Axes"][1]["Label"] == "Y"
         assert metadata["Axes"][1]["Size"] == 11
-        assert len(metadata["Values"]) == 2 # 2 channels
-        assert metadata["Values"][0]["DataType"] == "int64"
-        assert metadata["Values"][1]["DataType"] == "int64"
-        assert metadata["Values"][0]["Label"] == "R"
-        assert metadata["Values"][1]["Label"] == "G"
+        assert len(metadata["Properties"]["Values"]) == 2 # 2 channels
+        assert metadata["Properties"]["Values"][0]["DataType"] == "int64"
+        assert metadata["Properties"]["Values"][1]["DataType"] == "int64"
+        assert metadata["Properties"]["Values"][0]["Label"] == "R"
+        assert metadata["Properties"]["Values"][1]["Label"] == "G"
 
     def test_create_axistags(self):
         try:

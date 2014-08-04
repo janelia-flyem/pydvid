@@ -282,7 +282,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         message_json = self.rfile.read( int(body_len) )
         message_data = json.loads( message_json )
-        num_axes = len(message_data["VoxelSize"].split(','))
+        num_axes = len(message_data["Properties"]["VoxelSize"].split(','))
         
 
         # Create the new volume in the appropriate 'volumes' group,

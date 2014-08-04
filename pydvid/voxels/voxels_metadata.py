@@ -16,7 +16,7 @@ except:
     _have_h5py = False
 
 import pydvid.util
-metadata_schema = pydvid.util.parse_schema( 'dvid-voxels-metadata-v0.01.schema.json' )
+metadata_schema = pydvid.util.parse_schema( 'dvid-voxels-metadata-v0.02.schema.json' )
 
 class VoxelsMetadata(dict):
     """
@@ -79,7 +79,7 @@ class VoxelsMetadata(dict):
         super( VoxelsMetadata, self ).__init__( **metadata )
 
         dtypes = []
-        for channel_fields in metadata["Values"]:
+        for channel_fields in metadata["Properties"]["Values"]:
             dtypes.append( numpy.dtype( channel_fields["DataType"] ) )
 
         assert all( map( lambda dtype: dtype == dtypes[0], dtypes ) ), \
@@ -91,7 +91,7 @@ class VoxelsMetadata(dict):
         shape = []
         minindex = []
         minindex.append( 0 )
-        shape.append( len(metadata["Values"]) ) 
+        shape.append( len(metadata["Properties"]["Values"]) ) 
         for axisfields in metadata['Axes']:
             minindex.append( axisfields["Offset"] )
             shape.append( axisfields["Size"] + axisfields["Offset"] )
@@ -127,9 +127,9 @@ class VoxelsMetadata(dict):
            metadata["Axes"][2]["Resolution"] = 6.0
    
            # Customize: name channels
-           metadata["Values"][0]["Label"] = "intensity-R"
-           metadata["Values"][1]["Label"] = "intensity-G"
-           metadata["Values"][2]["Label"] = "intensity-B"
+           metadata["Properties"]["Values"][0]["Label"] = "intensity-R"
+           metadata["Properties"]["Values"][1]["Label"] = "intensity-G"
+           metadata["Properties"]["Values"][2]["Label"] = "intensity-B"
    
            # Prepare for transmission: encode to json
            jsontext = metadata.to_json()        
@@ -140,6 +140,7 @@ class VoxelsMetadata(dict):
         
         metadata = {}
         metadata["Axes"] = []
+        metadata["Properties"] = {}
         for key, size in zip(axiskeys, shape)[1:]: # skip channel
             axisdict = {}
             axisdict["Label"] = key.upper()
@@ -149,10 +150,10 @@ class VoxelsMetadata(dict):
             axisdict["Offset"] = 0
             metadata["Axes"].append( axisdict )
         
-        metadata["Values"] = []
+        metadata["Properties"]["Values"] = []
         num_channels = shape[ 0 ]
         for _ in range( num_channels ):
-            metadata["Values"].append( { "DataType" : dtype.name,
+            metadata["Properties"]["Values"].append( { "DataType" : dtype.name,
                                          "Label" : "" } )
         return VoxelsMetadata(metadata)
 
@@ -198,7 +199,7 @@ class VoxelsMetadata(dict):
             tags.insert( 0, vigra.AxisInfo('c', typeFlags=vigra.AxisType.Channels) )
             dtypes = []
             channel_labels = []
-            for channel_fields in self["Values"]:
+            for channel_fields in self["Properties"]["Values"]:
                 dtypes.append( numpy.dtype( channel_fields["DataType"] ).type )
                 channel_labels.append( channel_fields["Label"] )
 
