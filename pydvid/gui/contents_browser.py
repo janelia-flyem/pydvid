@@ -119,6 +119,7 @@ class ContentsBrowser(QDialog):
         buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
         buttonbox.accepted.connect( self.accept )
         buttonbox.rejected.connect( self.reject )
+        buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
 
         layout = QVBoxLayout()
         layout.addWidget( hostname_groupbox )
@@ -185,6 +186,7 @@ class ContentsBrowser(QDialog):
             self._populate_node_list(-1)
 
         self._connect_button.setEnabled(False)
+        self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
         enable_contents = self._datasets_info is not None
         self._data_groupbox.setEnabled(enable_contents)
