@@ -280,6 +280,21 @@ class TestVoxelsAccessor(object):
         with h5py.File(h5filename, 'r') as f:
             return f["all_nodes"][uuid][data_name][slicing]
   
+    def test_extra_query_args(self):
+        """
+        Create a VoxelsAccessor that uses extra query args 
+        They come after the '?' in the REST URI.  For example:
+        http://localhost/api/node/mydata/_0_1_2/10_10_10/0_0_0?roi=whatever&attenuation=3
+        """
+        # Retrieve from server
+        start, stop = (0,9,5,50,0), (4,10,20,150,3)
+        query_args = {'roi' : 'some_ref', 'attenuation' : 5}
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name, query_args=query_args )
+        subvolume = dvid_vol.get_ndarray( start, stop )
+          
+        # Compare to file
+        self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
+
     def test_zz_quickstart_usage(self):
         import json
         import httplib

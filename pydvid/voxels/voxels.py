@@ -52,10 +52,10 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
         # We can just read it and ignore it.
         response_text = response.read()
 
-def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, throttle=False ):
+def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, query_args=None, throttle=False ):
     _validate_query_bounds( start, stop, voxels_metadata.shape )
     codec = VoxelsNddataCodec( voxels_metadata )
-    response = get_subvolume_response( connection, uuid, data_name, start, stop, throttle=throttle )
+    response = get_subvolume_response( connection, uuid, data_name, start, stop, query_args=query_args, throttle=throttle )
     with contextlib.closing(response):
         # "Full" roi shape includes channel axis and ALL channels
         full_roi_shape = numpy.array(stop) - start
@@ -77,7 +77,7 @@ def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, thro
 def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new_data, throttle=False ):
     _validate_query_bounds( start, stop, voxels_metadata.shape, allow_overflow_extents=True )
     codec = VoxelsNddataCodec( voxels_metadata )
-    rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop, throttle=throttle )
+    rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", query_args=None, throttle=throttle )
     body_data_stream = codec.create_encoded_stream_from_ndarray(new_data)
     
     # Slightly tricky here:
@@ -97,11 +97,11 @@ def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new
         # Something (either dvid or the httplib) gets upset if we don't read the full response.
         response.read()
 
-def get_subvolume_response( connection, uuid, data_name, start, stop, format="", throttle=False ):
+def get_subvolume_response( connection, uuid, data_name, start, stop, format="", query_args=None, throttle=False ):
     """
     Request a subvolume from the server and return the raw HTTPResponse stream it returns.
     """
-    rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop, format, throttle )
+    rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop, format, query_args, throttle )
     connection.request( "GET", rest_query )
     response = connection.getresponse()
     if response.status != httplib.OK:
@@ -111,12 +111,14 @@ def get_subvolume_response( connection, uuid, data_name, start, stop, format="",
     return response
         
 
-def _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", throttle=False ):
+def _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", query_args=None, throttle=False ):
     """
     Construct the REST URI for get/post of a voxels subvolume.
     """
     start = numpy.asarray(start)
     stop = numpy.asarray(stop)
+    query_args = query_args or {}
+    query_args = { str(k) : str(v) for k,v in query_args.items() }
 
     # Drop channel before requesting from DVID
     start = start[1:]
@@ -136,8 +138,19 @@ def _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", throttl
                             start_str=start_str )
     if format != "":
         rest_query += "/" + format
+
+    # throttle is a special arg: normally it is set explicity as an arg to this function.
+    # but if the user also supplied it in the query_args, just verify consistency.
+    if 'throttle' in query_args:
+        if throttle:
+            assert query_args['throttle'] == 'on'
+        else:
+            assert query_args['throttle'] == 'off'
+    
     if throttle:
-        rest_query += "?throttle=on"
+        query_args["throttle"] = "on"
+    if query_args:
+        rest_query += "?" + "&".join( map( "=".join, query_args.items() ) )
     return rest_query
 
 def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=False ):
