@@ -304,10 +304,6 @@ class TestVoxelsAccessor(object):
         # Open a connection to DVID
         connection = httplib.HTTPConnection( "localhost:8000", timeout=5.0 )
          
-        # List the dataset roots: /api/datasets/list
-        root_nodes_info = general.get_datasets_list( connection )
-        # print json.dumps( root_nodes_info, indent=4 )
- 
         # Get detailed dataset info: /api/datasets/info
         dataset_details = general.get_datasets_info( connection )
         # print json.dumps( dataset_details, indent=4 )

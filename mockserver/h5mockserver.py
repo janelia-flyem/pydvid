@@ -117,8 +117,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # Note that order matters here
         rest_cmds = collections.OrderedDict([ ("^/api/server/info",                                          { "GET"  : self._do_get_server_info }),
                                               ("^/api/server/types",                                         { "GET"  : self._do_get_server_types }),
-                                              ("^/api/datasets/list$",                                       { "GET"  : self._do_get_datasets_list }),
-                                              ("^/api/datasets/info$",                                       { "GET"  : self._do_get_datasets_info }),
+                                              ("^/api/repos/info$",                                          { "GET"  : self._do_get_repos_info }),
                                               ("^/api/node/{uuid}/{dataname}/metadata",                      { "GET"  : self._do_get_volume_schema }),
                                               ("^/api/dataset/{uuid}/new/{typename}/{dataname}$",            { "POST" : self._do_create_new_data }),
                                               
@@ -181,13 +180,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write( json_text )
     
-    def _do_get_datasets_info(self):
+    def _do_get_repos_info(self):
         """
-        Respond to the query for dataset info.
+        Respond to the query for repo info.
         """
-        # Dataset info is determined by the layout/attributes of the server's hdf5 file.
+        # Repo info is determined by the layout/attributes of the server's hdf5 file.
         # See the docstring above for details.
-        info = self._get_datasets_info_dict()
+        info = self._get_repos_info_dict()
         json_text = json.dumps( info )
         self.send_response(httplib.OK)
         self.send_header("Content-type", "text/json")
@@ -195,25 +194,6 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write( json_text )
 
-
-    def _do_get_datasets_list(self):
-        datasets_info = self._get_datasets_info_dict()
-        
-        roots = []
-        for d in datasets_info["Datasets"]:
-            roots.append( d["Root"] )
-
-        data = {}
-        data["DatasetsUUID"] = roots
-        data["NewDatasetID"] = len(roots)
-        json_text = json.dumps( data )
-        
-        self.send_response(httplib.OK)
-        self.send_header("Content-type", "text/json")
-        self.send_header("Content-length", str(len(json_text)))
-        self.end_headers()
-        self.wfile.write( json_text )
-        
 
     def _do_create_new_data(self, uuid, typename, dataname):
         """
@@ -488,9 +468,9 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )
         return roi_start, roi_stop
 
-    def _get_datasets_info_dict(self):
+    def _get_repos_info_dict(self):
         """
-        Generate the data that will be sent in response to the /api/datasets/info request.
+        Generate the data that will be sent in response to the /api/repos/info request.
         
         Note: For the purposes of this mock server, only a 
               subset of the json fields are provided here.
@@ -501,13 +481,12 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                       it should be represented with [], not null
         """
         info = {}
-        datasets = info["Datasets"] = []
-        
         h5file = self.server.h5_file
         for dataset_index, (dataset_name, dataset_group) in enumerate(sorted(h5file['datasets'].items())):
             uuids = sorted( dataset_group["nodes"].keys() ) 
-            datasets.append( {} )
-            dset_info = datasets[-1]
+            # We're lazy.  Instead of creating a proper uuid, 
+            #  just use the dataset_index as if it were a uuid.
+            dset_info = info[str(dataset_index)] = {}
             dset_info["Root"] = uuids[0]
             dset_info["Nodes"] = {}
             dset_info["DatasetID"] = dataset_index

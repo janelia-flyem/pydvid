@@ -14,13 +14,6 @@ def get_server_types(connection):
 
 def get_datasets_info( connection ):
     """
-    Return the json data provided by the ``/api/datasets/info`` DVID call.
+    Return the json data provided by the ``/api/repos/info`` DVID call.
     """
-    return get_json_generic( connection, "/api/datasets/info", schema='dvid-datasets-info-v0.01.schema.json' )
-
-def get_datasets_list(connection):
-    """
-    Return the json data provided by the ``/api/datasets/list`` DVID call.
-    """
-    return get_json_generic( connection, "/api/datasets/list", schema='dvid-datasets-list-v0.01.schema.json' )
-
+    return get_json_generic( connection, "/api/repos/info", schema='dvid-repos-info-v0.01.schema.json' )
