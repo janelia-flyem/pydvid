@@ -198,9 +198,9 @@ class ContentsBrowser(QDialog):
             QMessageBox.critical(self, "Connection Error", error_msg)
             self._populate_datasets_tree()
             self._populate_node_list(-1)
-
-        self._connect_button.setEnabled(False)
-        self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
+        else:
+            self._connect_button.setEnabled(False)
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
         enable_contents = self._repos_info is not None
         self._data_groupbox.setEnabled(enable_contents)
