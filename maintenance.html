@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Maintenance &mdash; pydvid 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="pydvid 0.1 documentation" href="index.html" />
+    <link rel="prev" title="Optional GUI" href="gui.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="gui.html" title="Optional GUI"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="maintenance">
+<h1>Maintenance<a class="headerlink" href="#maintenance" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="json-schema-repo">
+<h2>JSON Schema Repo<a class="headerlink" href="#json-schema-repo" title="Permalink to this headline">¶</a></h2>
+<p>pydvid includes the <a class="reference external" href="https://github.com/janelia-flyem/service-contracts">service-contracts</a> repo as a <cite>git subtree</cite> located at prefix pydvid/dvidschema.
+Older versionos of git do not include the <tt class="docutils literal"><span class="pre">subtree</span></tt> command, so you may need to upgrade git and/or
+manually install the <tt class="docutils literal"><span class="pre">subtree</span></tt> command into your git installation.</p>
+<p>Changes to the dvidschema repo must be pulled into pydvid using <tt class="docutils literal"><span class="pre">git</span> <span class="pre">subtree</span> <span class="pre">pull</span></tt>.  For example:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="c"># Add the dvidschema repo as a remote if you haven&#39;t yet...</span>
+git remote add -f janelia-service-contracts https://github.com/janelia-flyem/service-contracts
+
+<span class="c"># Pull the most recent changes from service-contracts into our own repo&#39;s subtree</span>
+git fetch janelia-service-contracts
+git subtree pull --prefix pydvid/dvidschemas janelia-service-contracts master
+</pre></div>
+</div>
+</div>
+<div class="section" id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h2>
+<p>The test suite requires the following additional dependencies:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://nose.readthedocs.org/en/latest/">nosetests</a></li>
+<li><a class="reference external" href="http://www.h5py.org/">h5py</a></li>
+</ul>
+<p>Here&#8217;s how to run the test suite:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nb">cd </span>tests
+<span class="nv">PYTHONPATH</span><span class="o">=</span>.. nosetests .
+</pre></div>
+</div>
+<p>Note that pydvid uses its own &#8220;mock server&#8221; for testing purposes, which mimics the real responses provided by the DVID server.
+This means that you cannot have DVID running while running the test suite, as it would conflict with the mock server in the test suite.</p>
+<div class="section" id="mock-server">
+<h3>Mock Server<a class="headerlink" href="#mock-server" title="Permalink to this headline">¶</a></h3>
+<p>For test purposes, a mock DVID server is implemented in the <tt class="docutils literal"><span class="pre">mockserver</span></tt> directory.
+It serves up HDF5 datasets over http using the <a class="reference external" href="http://godoc.org/github.com/janelia-flyem/dvid/datatype/voxels#pkg-constants">DVID REST API</a>.</p>
+<p>The mock server pulls its data from an hdf5 file with a special structure.
+The <tt class="docutils literal"><span class="pre">H5MockServerDataFile</span></tt> utility class can be used to generate the file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">mockserver.h5mockserver</span> <span class="kn">import</span> <span class="n">H5MockServerDataFile</span>
+
+<span class="c"># Generate a volume to store.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">200</span><span class="p">,</span><span class="mi">300</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">voxels_metadata</span> <span class="o">=</span> <span class="n">VoxelsMetadata</span><span class="o">.</span><span class="n">create_default_metadata</span><span class="p">(</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">200</span><span class="p">,</span><span class="mi">300</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="s">&#39;cxyz&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s">&quot;&quot;</span> <span class="p">)</span>
+
+<span class="c"># Create special server datafile with one dataset, with one node.</span>
+<span class="c"># Then add our data volume to it.</span>
+<span class="k">with</span> <span class="n">H5MockServerDataFile</span><span class="p">(</span> <span class="s">&#39;mock_storage.h5&#39;</span> <span class="p">)</span> <span class="k">as</span> <span class="n">server_datafile</span><span class="p">:</span>
+    <span class="n">server_datafile</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span> <span class="s">&#39;my_dataset&#39;</span><span class="p">,</span> <span class="s">&#39;abc123&#39;</span> <span class="p">)</span>
+    <span class="n">server_datafile</span><span class="o">.</span><span class="n">add_volume</span><span class="p">(</span> <span class="s">&#39;my_dataset&#39;</span><span class="p">,</span> <span class="s">&#39;my_volume&#39;</span><span class="p">,</span> <span class="n">data_view</span><span class="p">,</span> <span class="n">voxels_metadata</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p>Once you have a datafile, the server can be started from the command line:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">cd </span>mockserver
+<span class="nv">$ PYTHONPATH</span><span class="o">=</span>.. python h5mockserver.py mock_storage.h5
+</pre></div>
+</div>
+<p>See <tt class="docutils literal"><span class="pre">h5mockserver.py</span></tt> the datafile format details.</p>
+</div>
+</div>
+<div class="section" id="maintaining-this-documentation">
+<h2>Maintaining this Documentation<a class="headerlink" href="#maintaining-this-documentation" title="Permalink to this headline">¶</a></h2>
+<p>This documentation is built with <a class="reference external" href="http://sphinx-doc.org/">Sphinx</a>, and
+hosted on github as a <a class="reference external" href="http://pages.github.com/">github page</a> for the pydvid repo.</p>
+<p>To make a changes to the docs, edit the desired <tt class="docutils literal"><span class="pre">.rst</span></tt> file(s) in the docs directory, and then build the docs:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nb">cd </span>docs
+<span class="nv">PYTHONPATH</span><span class="o">=</span>.. make html
+</pre></div>
+</div>
+<p>First, view your changes locally:</p>
+<div class="highlight-bash"><div class="highlight"><pre>firefox build/html/index.html
+</pre></div>
+</div>
+<p>Your changes will not be visible online until they are applied to the special <tt class="docutils literal"><span class="pre">gh-pages</span></tt> branch of pydvid and pushed.</p>
+<p>Fortunately, there is a script in pydvid for automating this process.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">To avoid losing any uncommitted changes in your working copy, it is highly recommended that you use a special local copy of the pydvid repo to do this.</p>
+</div>
+<p>Just follow these steps:</p>
+<ol class="arabic simple">
+<li>Make sure your changes to the .rst files are pushed to pydvid/master.</li>
+<li>Make a new clone of the pydvid repo, and checkout the <tt class="docutils literal"><span class="pre">gh-pages</span></tt> branch.</li>
+<li>Run the <tt class="docutils literal"><span class="pre">update_from_master.sh</span></tt> script.</li>
+</ol>
+<p>Here&#8217;s a walk-through (output not shown).</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="c"># 1) Commit your documentation changes, and push them to origin/master</span>
+<span class="nb">cd </span>docs
+git add -u .
+git commit -m <span class="s2">&quot;Made some docs changes.&quot;</span>
+git push origin master
+
+<span class="c"># 2a) Make a NEW CLONE of the repo (leave your working copy alone.)</span>
+<span class="nb">cd</span> /tmp
+git clone ssh://git@github.com/ilastik/pydvid pydvid-gh-pages
+
+<span class="c"># 2b) Checkout the gh-pages branch</span>
+<span class="nb">cd </span>pydvid-gh-pages/
+git checkout gh-pages
+
+<span class="c"># Run update_from_master.sh to make your changes visible on the web.</span>
+./update_from_master.sh
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">update_from_master.sh</span></tt> script handles the necessary pre-processing required by the github pages system.
+You can view the updated documentation at <a class="reference external" href="http://janelia-flyem.github.com/pydvid">http://janelia-flyem.github.com/pydvid</a>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Maintenance</a><ul>
+<li><a class="reference internal" href="#json-schema-repo">JSON Schema Repo</a></li>
+<li><a class="reference internal" href="#testing">Testing</a><ul>
+<li><a class="reference internal" href="#mock-server">Mock Server</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#maintaining-this-documentation">Maintaining this Documentation</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="gui.html"
+                        title="previous chapter">Optional GUI</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/maintenance.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="gui.html" title="Optional GUI"
+             >previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
