@@ -486,36 +486,43 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             uuids = sorted( dataset_group["nodes"].keys() ) 
             # We're lazy.  Instead of creating a proper uuid, 
             #  just use the dataset_index as if it were a uuid.
-            dset_info = info[str(dataset_index)] = {}
-            dset_info["Root"] = uuids[0]
-            dset_info["Nodes"] = {}
+            dataset_uuid = str(dataset_index)
+            dset_info = info[dataset_uuid] = {}
             dset_info["DatasetID"] = dataset_index
             dset_info["Alias"] = dataset_name
+            dset_info["DAG"] = {}
+            dset_info["DAG"]["Root"] = uuids[0]
+            dset_info["DAG"]["Nodes"] = {}
             for node_index, uuid in enumerate(uuids):
                 # Don't bother with most node info fields
-                dset_info["Nodes"][uuid] = { "GlobalID" : uuid,
-                                             "VersionID" : 0,
-                                             "Locked" : False,
-                                             "Created" : "1999-12-12",
-                                             "Updated" : "2000-01-01" }
+                dset_info["DAG"]["Nodes"][uuid] = { "UUID" : uuid,
+                                                    "VersionID" : 0,
+                                                     "Locked" : False,
+                                                     "Created" : "1999-12-12",
+                                                     "Updated" : "2000-01-01",
+                                                     "Note" : "",
+                                                     "Data" : {},
+                                                     "Log" : [] }
                 
                 # Assign a single parent/child for each node,
                 # except first/last
                 if node_index == 0:
-                    dset_info["Nodes"][uuid]["Parents"] = [] # TODO: Fix DVID API
+                    dset_info["DAG"]["Nodes"][uuid]["Parents"] = []
                 else:
-                    dset_info["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
+                    dset_info["DAG"]["Nodes"][uuid]["Parents"] = [ uuids[node_index-1] ]
 
                 if node_index == len(uuids)-1:
-                    dset_info["Nodes"][uuid]["Children"] = [] # TODO: Fix DVID API
+                    dset_info["DAG"]["Nodes"][uuid]["Children"] = []
                 else:
-                    dset_info["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
+                    dset_info["DAG"]["Nodes"][uuid]["Children"] = [ uuids[node_index+1] ]
             
-            datamap = dset_info["DataMap"] = {}
+            datamap = dset_info["DataInstances"] = {}
             volumes_group = 'datasets/{dataset_name}/volumes'.format( **locals() )
             for data_name, h5volume in sorted(h5file[volumes_group].items()):
                 datamap[data_name] = {}
-                datamap[data_name]["Name"] = data_name
+                datamap[data_name]["Base"] = {}
+                datamap[data_name]["Base"]["Name"] = data_name
+                datamap[data_name]["Base"]["RepoUUID"] = dataset_uuid
                 # TODO: Other fields...
         return info
 

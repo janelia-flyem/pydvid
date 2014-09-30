@@ -42,25 +42,25 @@ class ContentsBrowser(QDialog):
         self._suggested_hostnames = suggested_hostnames
         self._mode = mode
         self._current_dset = None
-        self._datasets_info = None
+        self._repos_info = None
         self._hostname = None
         
         # Create the UI
         self._init_layout()
 
-    VolumeSelection = collections.namedtuple( "VolumeSelection", "hostname dataset_index data_name node_uuid" )
+    VolumeSelection = collections.namedtuple( "VolumeSelection", "hostname dataset_uuid data_name node_uuid" )
     def get_selection(self):
         """
         Get the user's current (or final) selection.
         Returns a VolumeSelection tuple.
         """
         node_uuid = self._get_selected_node()
-        dset_index, data_name = self._get_selected_data()
+        dset_uuid, data_name = self._get_selected_data()
         
         if self._mode == "specify_new":
             data_name = str( self._new_data_edit.text() )
         
-        return ContentsBrowser.VolumeSelection(self._hostname, dset_index, data_name, node_uuid)
+        return ContentsBrowser.VolumeSelection(self._hostname, dset_uuid, data_name, node_uuid)
 
     def _init_layout(self):
         """
@@ -82,6 +82,7 @@ class ContentsBrowser(QDialog):
 
         hostname_groupbox = QGroupBox("DVID Host", parent=self)
         hostname_groupbox.setLayout( hostname_layout )
+        hostname_groupbox.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Maximum )
         
         data_treewidget = QTreeWidget(parent=self)
         data_treewidget.setHeaderLabels( ["Data"] ) # TODO: Add type, shape, axes, etc.
@@ -131,6 +132,11 @@ class ContentsBrowser(QDialog):
             new_data_groupbox.hide()
         layout.addWidget( full_url_label )
         layout.addWidget( buttonbox )
+
+        # Stretch factors
+        layout.setStretchFactor(data_groupbox, 3)
+        layout.setStretchFactor(node_groupbox, 1)
+        
         self.setLayout(layout)
         self.setWindowTitle( "Select DVID Volume" )
 
@@ -166,13 +172,13 @@ class ContentsBrowser(QDialog):
             new_hostname = new_hostname.split('://')[1] 
 
         error_msg = None
-        self._datasets_info = None
+        self._repos_info = None
         self._current_dset = None
         self._hostname = None
         try:
             # Query the server
             connection = httplib.HTTPConnection( new_hostname )
-            self._datasets_info = pydvid.general.get_datasets_info( connection )
+            self._repos_info = pydvid.general.get_repos_info( connection )
             self._hostname = new_hostname
             self._connection = connection
         except socket.error as ex:
@@ -188,7 +194,7 @@ class ContentsBrowser(QDialog):
         self._connect_button.setEnabled(False)
         self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
-        enable_contents = self._datasets_info is not None
+        enable_contents = self._repos_info is not None
         self._data_groupbox.setEnabled(enable_contents)
         self._node_groupbox.setEnabled(enable_contents)
         self._new_data_groupbox.setEnabled(enable_contents)
@@ -201,17 +207,15 @@ class ContentsBrowser(QDialog):
         """
         self._data_treewidget.clear()
         
-        if self._datasets_info is None:
+        if self._repos_info is None:
             return
         
-        for dset_info in self._datasets_info["Datasets"]:
-            dset_index = dset_info["DatasetID"]
-            dset_name = str(dset_index) # FIXME when API is fixed
-            dset_item = QTreeWidgetItem( self._data_treewidget, QStringList( dset_name ) )
-            dset_item.setData( 0, Qt.UserRole, (dset_index, "") )
-            for data_name in dset_info["DataMap"].keys():
+        for dset_uuid, dset_info in sorted(self._repos_info.items()):
+            dset_item = QTreeWidgetItem( self._data_treewidget, QStringList( dset_uuid ) )
+            dset_item.setData( 0, Qt.UserRole, (dset_uuid, "") )
+            for data_name in dset_info["DataInstances"].keys():
                 data_item = QTreeWidgetItem( dset_item, QStringList( data_name ) )
-                data_item.setData( 0, Qt.UserRole, (dset_index, data_name) )
+                data_item.setData( 0, Qt.UserRole, (dset_uuid, data_name) )
                 if self._mode == 'specify_new':
                     # If we're in specify_new mode, only the dataset parent items are selectable.
                     flags = data_item.flags()
@@ -240,28 +244,28 @@ class ContentsBrowser(QDialog):
         item_data = item.data(0, Qt.UserRole).toPyObject()
         if not item_data:
             return
-        dset_index, data_name = item_data
-        if self._current_dset != dset_index:
-            self._populate_node_list(dset_index)
+        dset_uuid, data_name = item_data
+        if self._current_dset != dset_uuid:
+            self._populate_node_list(dset_uuid)
         
         self._update_display()
 
-    def _populate_node_list(self, dataset_index):
+    def _populate_node_list(self, dataset_uuid):
         """
         Replace the contents of the node list widget 
         to show all the nodes for the currently selected dataset.
         """
         self._node_listwidget.clear()
         
-        if self._datasets_info is None:
+        if self._repos_info is None:
             return
         
         # For now, we simply show the nodes in sorted order, without respect to dag order
-        all_uuids = sorted( self._datasets_info["Datasets"][dataset_index]["Nodes"].keys() )
+        all_uuids = sorted( self._repos_info[dataset_uuid]["DAG"]["Nodes"].keys() )
         for node_uuid in all_uuids:
             node_item = QListWidgetItem( node_uuid, parent=self._node_listwidget )
             node_item.setData( Qt.UserRole, node_uuid )
-        self._current_dset = dataset_index
+        self._current_dset = dataset_uuid
 
         # Select the last one by default.
         last_row = self._node_listwidget.count() - 1
@@ -284,16 +288,16 @@ class ContentsBrowser(QDialog):
         selected_data_item = selected_items[0]
         data_item_data = selected_data_item.data(0, Qt.UserRole).toPyObject()
         if selected_data_item:
-            dset_index, data_name = data_item_data
+            dset_uuid, data_name = data_item_data
         else:
-            dset_index = data_name = None
-        return dset_index, data_name
+            dset_uuid = data_name = None
+        return dset_uuid, data_name
     
     def _update_display(self):
         """
         Update the path label to reflect the user's currently selected uuid and new volume name.
         """
-        hostname, dset_index, dataname, node_uuid = self.get_selection()
+        hostname, dset_uuid, dataname, node_uuid = self.get_selection()
         full_path = "http://{hostname}/api/node/{uuid}/{dataname}"\
                     "".format( hostname=self._hostname, uuid=node_uuid, dataname=dataname )
         self._full_url_label.setText( full_path )
@@ -317,8 +321,10 @@ if __name__ == "__main__":
     parser.add_argument("--mock-server-hdf5", required=False)
     parser.add_argument("--mode", choices=["select_existing", "specify_new"], default="select_existing")
     parser.add_argument("hostname", metavar="hostname:port")
+
+    #sys.argv.append("emdata2:8000")
     
-    DEBUG = True
+    DEBUG = False
     if DEBUG and len(sys.argv) == 1:
         # default debug args
         parser.print_help()

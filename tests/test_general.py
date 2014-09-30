@@ -74,13 +74,13 @@ class TestGeneralApiCalls(object):
         return H5MockServer.create_and_start( h5filepath, "localhost", 8000, same_process, disable_server_logging )
     
     def test_query_datasets_info(self):
-        info = general.get_datasets_info( self.client_connection )
+        info = general.get_repos_info( self.client_connection )
         items = sorted(info.items())
         first_item = items[0][1]
-        assert first_item["Root"] == "abcde"
-        assert first_item["Nodes"]["abcde"]["Parents"] == []
-        assert first_item["Nodes"]["abcde"]["Children"] == []
-        assert first_item["DataMap"][self.data_name]["Name"] == self.data_name
+        assert first_item["DAG"]["Root"] == "abcde"
+        assert first_item["DAG"]["Nodes"]["abcde"]["Parents"] == []
+        assert first_item["DAG"]["Nodes"]["abcde"]["Children"] == []
+        assert first_item["DataInstances"][self.data_name]["Base"]["Name"] == self.data_name
 
     def test_query_server_info(self):
         # Just run the query and see if we get a json schema error...

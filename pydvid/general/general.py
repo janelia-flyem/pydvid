@@ -12,7 +12,7 @@ def get_server_types(connection):
     """
     return get_json_generic( connection, "/api/server/types", schema='dvid-server-types-v0.01.schema.json' )
 
-def get_datasets_info( connection ):
+def get_repos_info( connection ):
     """
     Return the json data provided by the ``/api/repos/info`` DVID call.
     """

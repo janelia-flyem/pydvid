@@ -15,7 +15,7 @@ Quickstart
     connection = httplib.HTTPConnection( "localhost:8000", timeout=5.0 )
     
     # Get detailed dataset info: /api/datasets/info
-    dataset_details = general.get_datasets_info( connection )
+    dataset_details = general.get_repos_info( connection )
     print json.dumps( dataset_details, indent=4 )
     
     # Create a new remote volume
