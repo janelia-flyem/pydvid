@@ -166,6 +166,14 @@ class ContentsBrowser(QDialog):
             return True
         return False
 
+    def showEvent(self, event):
+        """
+        Raise the window when it is shown.
+        For some reason, that doesn't happen automatically if this widget is also the main window.
+        """
+        super(ContentsBrowser, self).showEvent(event)
+        self.raise_()
+
     def _handle_new_hostname(self):
         new_hostname = str( self._hostname_combobox.currentText() )
         if '://' in new_hostname:
@@ -315,15 +323,18 @@ if __name__ == "__main__":
     """
     import sys
     import argparse
+    
+    # Make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     from PyQt4.QtGui import QApplication
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mock-server-hdf5", required=False)
     parser.add_argument("--mode", choices=["select_existing", "specify_new"], default="select_existing")
-    parser.add_argument("hostname", metavar="hostname:port")
+    parser.add_argument("hostname", metavar="hostname:port", default="localhost:8000", nargs="?")
 
-    #sys.argv.append("emdata2:8000")
-    
     DEBUG = False
     if DEBUG and len(sys.argv) == 1:
         # default debug args
