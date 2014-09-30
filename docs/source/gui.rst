@@ -10,3 +10,8 @@ It requires `PyQt4`_ as a dependency.  You can launch it like so:
     python -m pydvid.gui.contents_browser
 
 .. _PyQt4: http://www.riverbankcomputing.com/software/pyqt/download
+
+.. figure:: images/contents_browser.png
+   :scale: 100  %
+   :alt: ContentsBrowser GUI screenshot.
+
