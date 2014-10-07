@@ -1,0 +1,503 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API Reference &mdash; pydvid 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="pydvid 0.1 documentation" href="index.html" />
+    <link rel="next" title="Optional GUI" href="gui.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="gui.html" title="Optional GUI"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="quickstart.html" title="Quickstart"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="general">
+<span id="id1"></span><h2>general<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All functions in this module can be used directly from the <tt class="docutils literal"><span class="pre">pydvid.general</span></tt> namespace, e.g. <tt class="docutils literal"><span class="pre">pydvid.general.get_server_info()</span></tt></p>
+</div>
+<span class="target" id="module-pydvid.general.general"></span><dl class="function">
+<dt id="pydvid.general.general.get_server_info">
+<tt class="descclassname">pydvid.general.general.</tt><tt class="descname">get_server_info</tt><big>(</big><em>connection</em><big>)</big><a class="reference internal" href="_modules/pydvid/general/general.html#get_server_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.general.general.get_server_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the json data provided by the <tt class="docutils literal"><span class="pre">/api/server/info</span></tt> DVID call.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.general.general.get_server_types">
+<tt class="descclassname">pydvid.general.general.</tt><tt class="descname">get_server_types</tt><big>(</big><em>connection</em><big>)</big><a class="reference internal" href="_modules/pydvid/general/general.html#get_server_types"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.general.general.get_server_types" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the json data provided by the <tt class="docutils literal"><span class="pre">/api/server/types</span></tt> DVID call.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.general.general.get_repos_info">
+<tt class="descclassname">pydvid.general.general.</tt><tt class="descname">get_repos_info</tt><big>(</big><em>connection</em><big>)</big><a class="reference internal" href="_modules/pydvid/general/general.html#get_repos_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.general.general.get_repos_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the json data provided by the <tt class="docutils literal"><span class="pre">/api/repos/info</span></tt> DVID call.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="keyvalue">
+<h2>keyvalue<a class="headerlink" href="#keyvalue" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All functions in this module can be used directly from the <tt class="docutils literal"><span class="pre">pydvid.keyvalue</span></tt> namespace, e.g. <tt class="docutils literal"><span class="pre">pydvid.keyvalue.get_value(...)</span></tt></p>
+</div>
+<span class="target" id="module-pydvid.keyvalue.keyvalue"></span><dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.create_new">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">create_new</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#create_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.create_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new keyvalue table in the dvid server.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.get_value">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request the value for the given key and return the whole thing.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.put_value">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">put_value</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#put_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.put_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Store the given value to the keyvalue data.
+value should be either str or a file-like object with fileno() and read() methods.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.keyvalue.keyvalue.get_value_response">
+<tt class="descclassname">pydvid.keyvalue.keyvalue.</tt><tt class="descname">get_value_response</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>key</em><big>)</big><a class="reference internal" href="_modules/pydvid/keyvalue/keyvalue.html#get_value_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.keyvalue.keyvalue.get_value_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request the value for the given key return the raw HTTPResponse object.
+The caller may opt to &#8216;stream&#8217; the data from the response instead of reading it all at once.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="voxels">
+<h2>voxels<a class="headerlink" href="#voxels" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All members of this module can be used directly from the <tt class="docutils literal"><span class="pre">pydvid.voxels</span></tt> namespace, e.g. <tt class="docutils literal"><span class="pre">pydvid.voxels.VoxelsAccessor</span></tt></p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Please see the <a class="reference internal" href="quickstart.html#quickstart"><em>quickstart</em></a> documentation for examples and important usage notes regarding the <tt class="docutils literal"><span class="pre">voxels</span></tt> API.</p>
+</div>
+<span class="target" id="module-pydvid.voxels.voxels"></span><dl class="function">
+<dt id="pydvid.voxels.voxels.get_metadata">
+<tt class="descclassname">pydvid.voxels.voxels.</tt><tt class="descname">get_metadata</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels.html#get_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels.get_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query the voxels metedata for the given node/data_name.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.voxels.voxels.create_new">
+<tt class="descclassname">pydvid.voxels.voxels.</tt><tt class="descname">create_new</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>voxels_metadata</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels.html#create_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels.create_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new volume in the dvid server.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pydvid.voxels.voxels.get_subvolume_response">
+<tt class="descclassname">pydvid.voxels.voxels.</tt><tt class="descname">get_subvolume_response</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>start</em>, <em>stop</em>, <em>format=''</em>, <em>query_args=None</em>, <em>throttle=False</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels.html#get_subvolume_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels.get_subvolume_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request a subvolume from the server and return the raw HTTPResponse stream it returns.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="pydvid.voxels.VoxelsMetadata">
+<em class="property">class </em><tt class="descclassname">pydvid.voxels.</tt><tt class="descname">VoxelsMetadata</tt><big>(</big><em>metadata</em><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dict subclass for the dvid nd-data metadata response.
+Also provides the following convenience attributes: <tt class="docutils literal"><span class="pre">minindex</span></tt>, <tt class="docutils literal"><span class="pre">shape</span></tt>, <tt class="docutils literal"><span class="pre">dtype</span></tt>, <tt class="docutils literal"><span class="pre">axiskeys</span></tt></p>
+<dl class="method">
+<dt id="pydvid.voxels.voxels_metadata.VoxelsMetadata.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>metadata</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels_metadata.html#VoxelsMetadata.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels_metadata.VoxelsMetadata.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>metadata</strong> &#8211; Either a string containing the json text for the DVID metadata, 
+or a corresponding dict of metadata (e.g. parsed from the json).
+If a string is passed, invalid json will result in a ValueError exception.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsMetadata.dtype">
+<tt class="descname">dtype</tt><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.dtype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  The pixel datatype of the remote DVID volume, as a <tt class="docutils literal"><span class="pre">numpy.dtype</span></tt> object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsMetadata.shape">
+<tt class="descname">shape</tt><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  The maximum coordinates in the DVID volume coordinate space.
+This is the stop coordinate of the volume&#8217;s bounding box.
+All data above this coordinate in any dimension is guaranteed to be invalid.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsMetadata.minindex">
+<tt class="descname">minindex</tt><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.minindex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  The starting coordinate of the volume&#8217;s bounding box.
+All data below this coordinate in any dimension is guaranteed to be invalid.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsMetadata.axiskeys">
+<tt class="descname">axiskeys</tt><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.axiskeys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  
+A string representing the axis indexing order of the volume, e.g. &#8216;cxyz&#8217;
+Always starts with &#8216;c&#8217; (channel).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">By DVID convention, the axiskeys are expressed in fortran order.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.VoxelsMetadata.to_json">
+<tt class="descname">to_json</tt><big>(</big><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.to_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method: dump this metadata to json string (for transmission to DVID).</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="pydvid.voxels.VoxelsMetadata.create_default_metadata">
+<em class="property">classmethod </em><tt class="descname">create_default_metadata</tt><big>(</big><em>shape</em>, <em>dtype</em>, <em>axiskeys</em>, <em>resolution</em>, <em>units</em><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.create_default_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a default VoxelsMetadata object from scratch using the given parameters,
+which can then be customized as needed.</p>
+<p>Example usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">metadata</span> <span class="o">=</span> <span class="n">VoxelsMetadata</span><span class="o">.</span><span class="n">create_default_metadata</span><span class="p">(</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">200</span><span class="p">,</span><span class="mi">300</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="s">&#39;cxyz&#39;</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s">&quot;micrometers&quot;</span> <span class="p">)</span>
+
+<span class="c"># Customize: Adjust resolution for Z-axis</span>
+<span class="k">assert</span> <span class="n">metadata</span><span class="p">[</span><span class="s">&quot;Axes&quot;</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s">&quot;Label&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;Z&quot;</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s">&quot;Axes&quot;</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s">&quot;Resolution&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">6.0</span>
+
+<span class="c"># Customize: name channels</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s">&quot;Properties&quot;</span><span class="p">][</span><span class="s">&quot;Values&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;Label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;intensity-R&quot;</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s">&quot;Properties&quot;</span><span class="p">][</span><span class="s">&quot;Values&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="s">&quot;Label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;intensity-G&quot;</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s">&quot;Properties&quot;</span><span class="p">][</span><span class="s">&quot;Values&quot;</span><span class="p">][</span><span class="mi">2</span><span class="p">][</span><span class="s">&quot;Label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;intensity-B&quot;</span>
+
+<span class="c"># Prepare for transmission: encode to json</span>
+<span class="n">jsontext</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>        
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.VoxelsMetadata.determine_dvid_typename">
+<tt class="descname">determine_dvid_typename</tt><big>(</big><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.determine_dvid_typename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Based on the dtype and number of channels for this volume, 
+determine the datatype name (in DVID terminology).
+For example, if this volume contains 1-channel uint8 data, 
+the DVID datatype is &#8216;grayscale8&#8217;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.VoxelsMetadata.create_axistags">
+<tt class="descname">create_axistags</tt><big>(</big><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.create_axistags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a vigra.AxisTags object corresponding to this VoxelsMetadata.
+(Requires vigra.)</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="pydvid.voxels.VoxelsMetadata.create_from_h5_dataset">
+<em class="property">classmethod </em><tt class="descname">create_from_h5_dataset</tt><big>(</big><em>dataset</em><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsMetadata.create_from_h5_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a VolumeInfo object to describe the given h5 dataset object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dataset</strong> &#8211; <p>An hdf5 dataset object that meets the following criteria:</p>
+<ul class="simple">
+<li>Indexed in F-order</li>
+<li>Has an &#8216;axistags&#8217; attribute, produced using vigra.AxisTags.toJSON()</li>
+<li>Has an explicit channel axis</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>(Requires h5py.)</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="slicing"></span><dl class="class">
+<dt id="pydvid.voxels.VoxelsAccessor">
+<em class="property">class </em><tt class="descclassname">pydvid.voxels.</tt><tt class="descname">VoxelsAccessor</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>query_args=None</em>, <em>throttle=False</em>, <em>retry_timeout=60.0</em>, <em>retry_interval=1.0</em>, <em>warning_interval=30.0</em><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Http client for retrieving a voxels volume data from a DVID server.
+An instance of VoxelsAccessor is capable of retrieving data from only one remote data volume.
+To retrieve data from multiple remote volumes, instantiate multiple DvidClient objects.</p>
+<p><strong>TODO</strong>:</p>
+<ul class="simple">
+<li>Allow users to provide a pre-allocated array when requesting data</li>
+</ul>
+<dl class="method">
+<dt id="pydvid.voxels.voxels_accessor.VoxelsAccessor.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>connection</em>, <em>uuid</em>, <em>data_name</em>, <em>query_args=None</em>, <em>throttle=False</em>, <em>retry_timeout=60.0</em>, <em>retry_interval=1.0</em>, <em>warning_interval=30.0</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels_accessor.html#VoxelsAccessor.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels_accessor.VoxelsAccessor.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>uuid</strong> &#8211; The node uuid</li>
+<li><strong>data_name</strong> &#8211; The name of the volume</li>
+<li><strong>connection</strong> &#8211; An <tt class="docutils literal"><span class="pre">httplib.HTTPConnection</span></tt> instance or something like it.</li>
+<li><strong>throttle</strong> &#8211; Enable the DVID &#8216;throttle&#8217; flag for all get/post requests</li>
+<li><strong>retry_timeout</strong> &#8211; Total time to spend repeating failed requests before giving up.
+(Set to 0 to prevent retries.)</li>
+<li><strong>retry_interval</strong> &#8211; Time to wait before repeating a failed get/post.</li>
+<li><strong>warning_interval</strong> &#8211; If the retry period exceeds this interval (but hasn&#8217;t 
+hit the retry_timeout yet), a warning is emitted.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">When DVID is overloaded, it may indicate its busy status by returning a <tt class="docutils literal"><span class="pre">503</span></tt> 
+(service unavailable) error in response to a get/post request.  In that case, 
+the get/post methods below will automatically repeat the failed request until 
+the <cite>retry_timeout</cite> is reached.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.voxels_accessor.VoxelsAccessor.__getitem__">
+<tt class="descname">__getitem__</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels_accessor.html#VoxelsAccessor.__getitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels_accessor.VoxelsAccessor.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implement convenient numpy-like slicing syntax for volume access.</p>
+<dl class="docutils">
+<dt>Limitations: </dt>
+<dd><ul class="first last simple">
+<li>&#8220;Fancy&#8221; indexing via index arrays, etc. is not supported,
+but &#8220;normal&#8221; slicing, including stepping, is supported.</li>
+</ul>
+</dd>
+</dl>
+<p>Examples:</p>
+<blockquote>
+<div><div class="highlight-python"><div class="highlight"><pre><span class="n">connection</span> <span class="o">=</span> <span class="n">httplib</span><span class="o">.</span><span class="n">HTTPConnection</span><span class="p">(</span> <span class="s">&quot;localhost:8000&quot;</span> <span class="p">)</span> 
+<span class="n">v</span> <span class="o">=</span> <span class="n">VoxelsAccessor</span><span class="p">(</span> <span class="n">connection</span><span class="p">,</span> <span class="n">uuid</span><span class="o">=</span><span class="n">abc123</span><span class="p">,</span> <span class="n">data_name</span><span class="o">=</span><span class="s">&#39;my_3d_rgb_volume&#39;</span> <span class="p">)</span>
+
+<span class="c"># The whole thing</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">v</span><span class="p">[:]</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+<span class="c"># Arbitrary slicing</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="mi">10</span><span class="p">,:]</span>
+
+<span class="c"># Note: DVID always returns all channels.</span>
+<span class="c">#       Here, you are permitted to slice into the channel axis,</span>
+<span class="c">#       but be aware that this implementation requests all </span>
+<span class="c">#       channels and returns the ones you asked for.</span>
+<span class="n">blue</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+<span class="c"># Therefore, avoid this, since it results in 2 requests for the same data</span>
+<span class="n">red</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">green</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="c"># Instead, do this:</span>
+<span class="n">rgb</span> <span class="o">=</span> <span class="n">v</span><span class="p">[:]</span>
+<span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span> <span class="o">=</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+<span class="c"># Similarly, you are permitted to use slices with steps, but be aware that </span>
+<span class="c"># the entire bounding volume will be requested, and the sliced steps will be </span>
+<span class="c"># extracted from the dense volume.</span>
+
+<span class="c"># Extract the upper-left 10x10 tile of every other z-slice:</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">v</span><span class="p">[:,:</span><span class="mi">10</span><span class="p">,:</span><span class="mi">10</span><span class="p">,::</span><span class="mi">2</span><span class="p">]</span>
+
+<span class="c"># The above is equivalent to this:</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">v</span><span class="p">[:,:</span><span class="mi">10</span><span class="p">,:</span><span class="mi">10</span><span class="p">,:][</span><span class="o">...</span><span class="p">,::</span><span class="mi">2</span><span class="p">]</span>            
+</pre></div>
+</div>
+</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.voxels_accessor.VoxelsAccessor.__setitem__">
+<tt class="descname">__setitem__</tt><big>(</big><em>slicing</em>, <em>array_data</em><big>)</big><a class="reference internal" href="_modules/pydvid/voxels/voxels_accessor.html#VoxelsAccessor.__setitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pydvid.voxels.voxels_accessor.VoxelsAccessor.__setitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implement convenient numpy-like slicing syntax for overwriting regions of a DVID volume.</p>
+<dl class="docutils">
+<dt>Limitations:</dt>
+<dd>Unlike the __getitem__ syntax implemented above, we do NOT permit arbitrary slicing.
+Instead, only &#8220;dense&#8221; subvolumes may be written.  
+That is, you must include all channels, and your slices may not include a step size.</dd>
+</dl>
+<p>Examples:</p>
+<blockquote>
+<div><div class="highlight-python"><div class="highlight"><pre><span class="n">connection</span> <span class="o">=</span> <span class="n">httplib</span><span class="o">.</span><span class="n">HTTPConnection</span><span class="p">(</span> <span class="s">&quot;localhost:8000&quot;</span> <span class="p">)</span> 
+<span class="n">v</span> <span class="o">=</span> <span class="n">VoxelsAccessor</span><span class="p">(</span> <span class="n">connection</span><span class="p">,</span> <span class="n">uuid</span><span class="o">=</span><span class="n">abc123</span><span class="p">,</span> <span class="n">data_name</span><span class="o">=</span><span class="s">&#39;my_3d_rgb_volume&#39;</span> <span class="p">)</span>
+
+<span class="c"># Overwrite the third z-slice</span>
+<span class="n">v</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+
+<span class="c"># Forbidden: attempt to stepped slices</span>
+<span class="n">v</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span> <span class="c"># Error!</span>
+
+<span class="c"># Forbidden: attempt to write only a subset of channels (the first axis)</span>
+<span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">green_data</span> <span class="c"># Error!</span>
+</pre></div>
+</div>
+</div></blockquote>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsAccessor.shape">
+<tt class="descname">shape</tt><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  The maximum coordinates in the DVID volume coordinate space.
+This is the stop coordinate of the volume&#8217;s bounding box.
+All data above this coordinate in any dimension is guaranteed to be invalid.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsAccessor.minindex">
+<tt class="descname">minindex</tt><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor.minindex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  The starting coordinate of the volume&#8217;s bounding box.
+All data below this coordinate in any dimension is guaranteed to be invalid.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsAccessor.dtype">
+<tt class="descname">dtype</tt><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor.dtype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  The pixel datatype of the remote DVID volume, as a <tt class="docutils literal"><span class="pre">numpy.dtype</span></tt> object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pydvid.voxels.VoxelsAccessor.axiskeys">
+<tt class="descname">axiskeys</tt><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor.axiskeys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property.  
+A string representing the axis indexing order of the volume, e.g. &#8216;cxyz&#8217;
+Always starts with &#8216;c&#8217; (channel).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">By DVID convention, the axiskeys are expressed in fortran order.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.VoxelsAccessor.get_ndarray">
+<tt class="descname">get_ndarray</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor.get_ndarray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request the subvolume specified by the given start and stop pixel coordinates.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pydvid.voxels.VoxelsAccessor.post_ndarray">
+<tt class="descname">post_ndarray</tt><big>(</big><em>start</em>, <em>stop</em>, <em>new_data</em><big>)</big><a class="headerlink" href="#pydvid.voxels.VoxelsAccessor.post_ndarray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overwrite subvolume specified by the given start and stop pixel coordinates with new_data.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#general">general</a></li>
+<li><a class="reference internal" href="#keyvalue">keyvalue</a></li>
+<li><a class="reference internal" href="#voxels">voxels</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="quickstart.html"
+                        title="previous chapter">Quickstart</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="gui.html"
+                        title="next chapter">Optional GUI</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/reference.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="gui.html" title="Optional GUI"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="quickstart.html" title="Quickstart"
+             >previous</a> |</li>
+        <li><a href="index.html">pydvid 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>
