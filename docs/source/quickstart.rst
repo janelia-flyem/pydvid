@@ -118,6 +118,7 @@ pydvid is pretty small right now, but we hope it will gracefully absorb more fun
 * Sparse volume access
 * Stricter JSON schema validation
 * Testing against an actual DVID server instead of relying on the builtin mock server
+* Support signed (negative) coordinates
 
 Open questions
 --------------

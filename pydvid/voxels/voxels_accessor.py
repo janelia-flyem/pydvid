@@ -34,10 +34,10 @@ class VoxelsAccessor(object):
         :param warning_interval: If the retry period exceeds this interval (but hasn't 
                                  hit the retry_timeout yet), a warning is emitted.
         
-        .. note: When DVID is overloaded, it may indicate its busy status by returning a ``503`` 
-                 (service unavailable) error in response to a get/post request.  In that case, 
-                 the get/post methods below will automatically repeat the failed request until 
-                 the `retry_timeout` is reached.
+        .. note:: When DVID is overloaded, it may indicate its busy status by returning a ``503`` 
+                  (service unavailable) error in response to a get/post request.  In that case, 
+                  the get/post methods below will automatically repeat the failed request until 
+                  the `retry_timeout` is reached.
         """
         self.uuid = uuid
         self.data_name = data_name
