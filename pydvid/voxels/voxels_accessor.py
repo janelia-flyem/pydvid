@@ -22,7 +22,7 @@ class VoxelsAccessor(object):
     class ThrottleTimeoutException(Exception):
         pass
     
-    def __init__(self, connection, uuid, data_name, query_args=None, throttle=False, retry_timeout=60.0, retry_interval=1.0, warning_interval=30.0):
+    def __init__(self, connection, uuid, data_name, query_args=None, throttle=None, retry_timeout=60.0, retry_interval=1.0, warning_interval=30.0):
         """
         :param uuid: The node uuid
         :param data_name: The name of the volume
@@ -42,11 +42,24 @@ class VoxelsAccessor(object):
         self.uuid = uuid
         self.data_name = data_name
         self._connection = connection
-        self._throttle = throttle
         self._retry_timeout = retry_timeout
         self._retry_interval = retry_interval
         self._warning_interval = warning_interval
         self._query_args = query_args or {}
+        
+        # Special case: throttle can be set explicity via the keyword or implicitly via the query_args.
+        # Make sure they are consistent.
+        if 'throttle' in query_args:
+            if query_args['throttle'] == 'on':
+                assert throttle is None or throttle is True
+                self._throttle = True
+            if query_args['throttle'] == 'off':
+                assert throttle is None or throttle is False
+                self._throttle = False
+        elif throttle is None:
+            self._throttle = False
+        else:
+            self._throttle = throttle
 
         # Request this volume's metadata from DVID
         self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
