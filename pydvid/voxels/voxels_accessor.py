@@ -1,3 +1,4 @@
+import copy
 import time
 import httplib
 import functools
@@ -22,7 +23,14 @@ class VoxelsAccessor(object):
     class ThrottleTimeoutException(Exception):
         pass
     
-    def __init__(self, connection, uuid, data_name, query_args=None, throttle=None, retry_timeout=60.0, retry_interval=1.0, warning_interval=30.0):
+    def __init__(self, connection, uuid, data_name, 
+                 query_args=None, 
+                 throttle=None, 
+                 retry_timeout=60.0, 
+                 retry_interval=1.0, 
+                 warning_interval=30.0, 
+                 _metadata=None,
+                 _access_type="raw"):
         """
         :param uuid: The node uuid
         :param data_name: The name of the volume
@@ -33,6 +41,7 @@ class VoxelsAccessor(object):
         :param retry_interval: Time to wait before repeating a failed get/post.
         :param warning_interval: If the retry period exceeds this interval (but hasn't 
                                  hit the retry_timeout yet), a warning is emitted.
+        :param _metadata: If provided, used as the metadata for the accessor.  Otherwise, the server is queried to obtain this volume's metadata.
         
         .. note:: When DVID is overloaded, it may indicate its busy status by returning a ``503`` 
                   (service unavailable) error in response to a get/post request.  In that case, 
@@ -46,14 +55,15 @@ class VoxelsAccessor(object):
         self._retry_interval = retry_interval
         self._warning_interval = warning_interval
         self._query_args = query_args or {}
+        self._access_type = _access_type
         
         # Special case: throttle can be set explicity via the keyword or implicitly via the query_args.
         # Make sure they are consistent.
-        if 'throttle' in query_args:
-            if query_args['throttle'] == 'on':
+        if 'throttle' in self._query_args:
+            if self._self._query_args['throttle'] == 'on':
                 assert throttle is None or throttle is True
                 self._throttle = True
-            if query_args['throttle'] == 'off':
+            if self._query_args['throttle'] == 'off':
                 assert throttle is None or throttle is False
                 self._throttle = False
         elif throttle is None:
@@ -62,7 +72,26 @@ class VoxelsAccessor(object):
             self._throttle = throttle
 
         # Request this volume's metadata from DVID
-        self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
+        self.voxels_metadata = _metadata
+        if self.voxels_metadata is None:
+            self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
+
+    def create_roi_mask_accessor(self, roi_name):
+        """
+        Create a new VoxelsAccessor with all the same properties as the current instance, 
+        except that it accesses a roi mask volume.
+        """
+        # Copy the voxels metadata, but modify it for the roi mask data type
+        mask_metadata = copy.deepcopy(self.voxels_metadata)
+        mask_metadata["Properties"] = { "Values" : [ { "DataType" : "uint8", "Label": "mask" } ] }
+        
+        return VoxelsAccessor( self._connection, self.uuid, roi_name,
+                               query_args=self._query_args,
+                               retry_timeout=self._retry_timeout,
+                               retry_interval=self._retry_interval,
+                               warning_interval=self._warning_interval,
+                               _metadata=mask_metadata,
+                               _access_type="mask" )
 
     @property
     def shape(self):
@@ -160,6 +189,7 @@ class VoxelsAccessor(object):
         return voxels.get_ndarray( self._connection, 
                                    self.uuid, 
                                    self.data_name, 
+                                   self._access_type,
                                    self.voxels_metadata, 
                                    start, 
                                    stop,
@@ -184,6 +214,7 @@ class VoxelsAccessor(object):
         voxels.post_ndarray( self._connection, 
                              self.uuid, 
                              self.data_name, 
+                             self._access_type,
                              self.voxels_metadata, 
                              start, 
                              stop, 

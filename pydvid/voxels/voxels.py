@@ -52,10 +52,10 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
         # We can just read it and ignore it.
         response_text = response.read()
 
-def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, query_args=None, throttle=False ):
+def get_ndarray( connection, uuid, data_name, access_type, voxels_metadata, start, stop, query_args=None, throttle=False ):
     _validate_query_bounds( start, stop, voxels_metadata.shape )
     codec = VoxelsNddataCodec( voxels_metadata )
-    response = get_subvolume_response( connection, uuid, data_name, start, stop, query_args=query_args, throttle=throttle )
+    response = get_subvolume_response( connection, uuid, data_name, access_type, start, stop, query_args=query_args, throttle=throttle )
     with contextlib.closing(response):
         # "Full" roi shape includes channel axis and ALL channels
         full_roi_shape = numpy.array(stop) - start
@@ -74,10 +74,10 @@ def get_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, quer
         # Select the requested channels from the returned data.
         return decoded_data
 
-def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new_data, throttle=False ):
+def post_ndarray( connection, uuid, data_name, access_type, voxels_metadata, start, stop, new_data, throttle=False ):
     _validate_query_bounds( start, stop, voxels_metadata.shape, allow_overflow_extents=True )
     codec = VoxelsNddataCodec( voxels_metadata )
-    rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", query_args=None, throttle=throttle )
+    rest_query = _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, format="", query_args=None, throttle=throttle )
     body_data_stream = codec.create_encoded_stream_from_ndarray(new_data)
     
     # Slightly tricky here:
@@ -97,11 +97,11 @@ def post_ndarray( connection, uuid, data_name, voxels_metadata, start, stop, new
         # Something (either dvid or the httplib) gets upset if we don't read the full response.
         response.read()
 
-def get_subvolume_response( connection, uuid, data_name, start, stop, format="", query_args=None, throttle=False ):
+def get_subvolume_response( connection, uuid, data_name, access_type, start, stop, format="", query_args=None, throttle=False ):
     """
     Request a subvolume from the server and return the raw HTTPResponse stream it returns.
     """
-    rest_query = _format_subvolume_rest_uri( uuid, data_name, start, stop, format, query_args, throttle )
+    rest_query = _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, format, query_args, throttle )
     connection.request( "GET", rest_query )
     response = connection.getresponse()
     if response.status != httplib.OK:
@@ -111,7 +111,7 @@ def get_subvolume_response( connection, uuid, data_name, start, stop, format="",
     return response
         
 
-def _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", query_args=None, throttle=False ):
+def _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, format="", query_args=None, throttle=False ):
     """
     Construct the REST URI for get/post of a voxels subvolume.
     """
@@ -130,9 +130,10 @@ def _format_subvolume_rest_uri( uuid, data_name, start, stop, format="", query_a
     start_str = "_".join( map(str, start) )
     
     dims_string = "_".join( map(str, range(len(start)) ) )
-    rest_query = "/api/node/{uuid}/{data_name}/raw/{dims_string}/{roi_shape_str}/{start_str}"\
+    rest_query = "/api/node/{uuid}/{data_name}/{access_type}/{dims_string}/{roi_shape_str}/{start_str}"\
                  "".format( uuid=uuid, 
                             data_name=data_name, 
+                            access_type=access_type,
                             dims_string=dims_string, 
                             roi_shape_str=roi_shape_str, 
                             start_str=start_str )
