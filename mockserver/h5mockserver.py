@@ -115,17 +115,18 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         # Supported REST command formats -> methods and handlers
         # Note that order matters here
-        rest_cmds = collections.OrderedDict([ ("^/api/server/info",                                          { "GET"  : self._do_get_server_info }),
-                                              ("^/api/server/types",                                         { "GET"  : self._do_get_server_types }),
-                                              ("^/api/repos/info$",                                          { "GET"  : self._do_get_repos_info }),
-                                              ("^/api/node/{uuid}/{dataname}/metadata",                      { "GET"  : self._do_get_volume_schema }),
-                                              ("^/api/dataset/{uuid}/new/{typename}/{dataname}$",            { "POST" : self._do_create_new_data }),
+        rest_cmds = collections.OrderedDict([ ("^/api/server/info",                                           { "GET"  : self._do_get_server_info }),
+                                              ("^/api/server/types",                                          { "GET"  : self._do_get_server_types }),
+                                              ("^/api/repos/info$",                                           { "GET"  : self._do_get_repos_info }),
+                                              ("^/api/node/{uuid}/{dataname}/metadata",                       { "GET"  : self._do_get_volume_schema }),
+                                              ("^/api/dataset/{uuid}/new/{typename}/{dataname}$",             { "POST" : self._do_create_new_data }),
                                               
                                               # For now, we ignore format and throttle params
-                                              ("^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}.*", { "GET"  : self._do_get_data,
-                                                                                                               "POST" : self._do_modify_data }),
-                                              ("^/api/node/{uuid}/{dataname}/{key}$" ,                       { "GET"  : self._do_get_keyvalue,
-                                                                                                               "POST" : self._do_set_keyvalue })
+                                              ("^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}.*",  { "GET"  : self._do_get_data,
+                                                                                                                "POST" : self._do_modify_data }),
+                                              ("^/api/node/{uuid}/{dataname}/mask/{dims}/{shape}/{offset}.*", { "GET"  : self._do_get_roi_mask}),
+                                              ("^/api/node/{uuid}/{dataname}/{key}$" ,                        { "GET"  : self._do_get_keyvalue,
+                                                                                                                "POST" : self._do_set_keyvalue })
                                           ])
 
         # Find the matching rest command and execute the handler.
@@ -304,9 +305,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         dataset = self._get_h5_dataset(uuid, dataname)
         roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
+
+        if (numpy.array(roi_start) < 0).any() or (numpy.array(roi_stop) > dataset.shape[1:]).any():
+            raise Exception("roi {} is out-of-bounds for dataset with shape {}".format( (roi_start, roi_stop), dataset.shape[1:] ) )
+
         # Prepend channel slicing
         slicing = (slice(None),) + tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
-        
+
         data = dataset[slicing]
         
         codec = VoxelsNddataCodec( dataset.dtype )
@@ -318,7 +323,10 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         codec.encode_from_ndarray( self.wfile, data )
-    
+
+    def _do_get_roi_mask(self, uuid, dataname, dims, shape, offset):
+        # Just re-use the regular get_data function.
+        self._do_get_data(uuid, dataname, dims, shape, offset)    
 
     def _do_modify_data(self, uuid, dataname, dims, shape, offset):
         """

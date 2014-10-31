@@ -174,7 +174,9 @@ def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=Fa
     assert (start < stop).all(), "Invalid start/stop: {}/{}".format( start, stop )
     assert (start >= 0).all(), "Invalid start: {}".format( start )
     
-    if not allow_overflow_extents:
+    if not allow_overflow_extents and (None not in list(shape)):
         assert (start < shape).all(), "Invalid start/shape: {}/{}".format( start, shape )
         assert (stop <= shape).all(), "Invalid stop/shape: {}/{}".format( stop, shape )
-
+    else:
+        assert (start[0] < shape[0]).all(), "Invalid channel start/shape: {}/{}".format( start, shape )
+        assert (stop[0] <= shape[0]).all(), "Invalid channel stop/shape: {}/{}".format( stop, shape )

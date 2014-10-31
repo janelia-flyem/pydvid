@@ -92,9 +92,20 @@ class VoxelsMetadata(dict):
         minindex = []
         minindex.append( 0 )
         shape.append( len(metadata["Properties"]["Values"]) ) 
+        assert shape[0] is not None, \
+            "Volume metadata is not required to have a complete shape, "\
+            "but must at least have a completely specified number of channels."
+
         for axisfields in metadata['Axes']:
-            minindex.append( axisfields["Offset"] )
-            shape.append( axisfields["Size"] + axisfields["Offset"] )
+            if axisfields["Offset"]:
+                minindex.append( axisfields["Offset"] )
+            else:
+                minindex.append( None )
+            if not axisfields["Size"]:
+                shape.append( None )
+            else:
+                shape.append( axisfields["Size"] + axisfields["Offset"] )
+
         self._shape = tuple(shape)
         self._minindex = tuple(minindex)
     

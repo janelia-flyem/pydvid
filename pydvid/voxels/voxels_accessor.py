@@ -8,6 +8,7 @@ import numpy
 import voxels
 
 from pydvid.errors import DvidHttpError
+from pydvid.voxels import VoxelsMetadata
 
 class VoxelsAccessor(object):
     """
@@ -75,23 +76,6 @@ class VoxelsAccessor(object):
         self.voxels_metadata = _metadata
         if self.voxels_metadata is None:
             self.voxels_metadata = voxels.get_metadata( self._connection, uuid, data_name )
-
-    def create_roi_mask_accessor(self, roi_name):
-        """
-        Create a new VoxelsAccessor with all the same properties as the current instance, 
-        except that it accesses a roi mask volume.
-        """
-        # Copy the voxels metadata, but modify it for the roi mask data type
-        mask_metadata = copy.deepcopy(self.voxels_metadata)
-        mask_metadata["Properties"] = { "Values" : [ { "DataType" : "uint8", "Label": "mask" } ] }
-        
-        return VoxelsAccessor( self._connection, self.uuid, roi_name,
-                               query_args=self._query_args,
-                               retry_timeout=self._retry_timeout,
-                               retry_interval=self._retry_interval,
-                               warning_interval=self._warning_interval,
-                               _metadata=mask_metadata,
-                               _access_type="mask" )
 
     @property
     def shape(self):
@@ -430,3 +414,41 @@ class VoxelsAccessor(object):
         
         return s
 
+class RoiMaskAccessor(VoxelsAccessor):
+    """
+    Special subclass of VoxelsAccessor that can be used to access ROI data as a voxels type.
+    
+    - doesn't request voxels metadata (which isn't possible for roi data)
+    - doesn't specify/need a fixed shape/minindex for the volume.
+    - Axis order is HARD-CODED as CXYZ
+    - dtype is HARD-CODED as uint8
+    - uses the 'mask' access type in the REST query instead of 'raw'
+    """
+    
+    def __init__(self, connection, uuid, data_name, *args, **kwargs):
+        """
+        Create a new VoxelsAccessor with all the same properties as the current instance, 
+        except that it accesses a roi mask volume.
+        """
+        # Create default mask metadata.
+        mask_metadata = {}
+        mask_metadata["Properties"] = { "Values" : [ { "DataType" : "uint8", "Label": "roi-mask" } ] }
+
+        # For now, we hardcode XYZ order
+        # The size/offset are left as None, because that doesn't apply to ROI data.
+        default_axis_info = { "Label": "", "Resolution": 1, "Units": "", "Size": 0, "Offset" : 0 }
+        mask_metadata["Axes"] = [copy.copy(default_axis_info),
+                                 copy.copy(default_axis_info),
+                                 copy.copy(default_axis_info)]
+        mask_metadata["Axes"][0]["Label"] = "X"
+        mask_metadata["Axes"][1]["Label"] = "Y"
+        mask_metadata["Axes"][2]["Label"] = "Z"
+        
+        assert '_metadata' not in kwargs or kwargs['_metadata'] is None
+        kwargs['_metadata'] = VoxelsMetadata(mask_metadata)
+        
+        assert '_access_type' not in kwargs or kwargs['_access_type'] is None        
+        kwargs['_access_type'] = 'mask'
+
+        # Init base class with pre-formed metadata instead of querying for it.
+        super(RoiMaskAccessor, self).__init__( connection, uuid, data_name, *args, **kwargs )
