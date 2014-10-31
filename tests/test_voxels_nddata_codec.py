@@ -2,16 +2,13 @@ import StringIO
 
 import numpy
 
-from pydvid.voxels import VoxelsMetadata
 from pydvid.voxels.voxels_nddata_codec import VoxelsNddataCodec
 
 class TestVoxelsNddataCodec(object):
     
     def test_basic_roundtrip(self):
         data = numpy.random.randint(0,255, (3, 100, 200)).astype(numpy.uint8)
-        
-        metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-        codec = VoxelsNddataCodec( metadata )
+        codec = VoxelsNddataCodec( data.dtype )
         
         stream = StringIO.StringIO()
         codec.encode_from_ndarray(stream, data)
@@ -24,9 +21,7 @@ class TestVoxelsNddataCodec(object):
     def test_all_dtypes(self):
         for dtype in [numpy.uint8, numpy.uint16, numpy.uint32, numpy.float32, numpy.float64]:
             data = numpy.random.randint(0,255, (3,100,200)).astype(dtype)
-             
-            metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-            codec = VoxelsNddataCodec( metadata )
+            codec = VoxelsNddataCodec( data.dtype )
              
             stream = StringIO.StringIO()
             codec.encode_from_ndarray(stream, data)
@@ -38,9 +33,7 @@ class TestVoxelsNddataCodec(object):
  
     def test_encoded_stream(self):
         data = numpy.random.randint(0,255, (3, 100, 200)).astype(numpy.uint8)
-        
-        metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, 'cxy', 1.0, "nanometers")
-        codec = VoxelsNddataCodec( metadata )
+        codec = VoxelsNddataCodec( data.dtype )
         
         stream = codec.create_encoded_stream_from_ndarray(data)
         roundtrip_data = codec.decode_to_ndarray(stream, data.shape)

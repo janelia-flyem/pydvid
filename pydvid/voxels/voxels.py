@@ -54,7 +54,7 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
 
 def get_ndarray( connection, uuid, data_name, access_type, voxels_metadata, start, stop, query_args=None, throttle=False ):
     _validate_query_bounds( start, stop, voxels_metadata.shape )
-    codec = VoxelsNddataCodec( voxels_metadata )
+    codec = VoxelsNddataCodec( voxels_metadata.dtype )
     response = get_subvolume_response( connection, uuid, data_name, access_type, start, stop, query_args=query_args, throttle=throttle )
     with contextlib.closing(response):
         # "Full" roi shape includes channel axis and ALL channels
@@ -74,9 +74,10 @@ def get_ndarray( connection, uuid, data_name, access_type, voxels_metadata, star
         # Select the requested channels from the returned data.
         return decoded_data
 
+
 def post_ndarray( connection, uuid, data_name, access_type, voxels_metadata, start, stop, new_data, throttle=False ):
     _validate_query_bounds( start, stop, voxels_metadata.shape, allow_overflow_extents=True )
-    codec = VoxelsNddataCodec( voxels_metadata )
+    codec = VoxelsNddataCodec( voxels_metadata.dtype )
     rest_query = _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, format="", query_args=None, throttle=throttle )
     body_data_stream = codec.create_encoded_stream_from_ndarray(new_data)
     
@@ -97,6 +98,7 @@ def post_ndarray( connection, uuid, data_name, access_type, voxels_metadata, sta
         # Something (either dvid or the httplib) gets upset if we don't read the full response.
         response.read()
 
+
 def get_subvolume_response( connection, uuid, data_name, access_type, start, stop, format="", query_args=None, throttle=False ):
     """
     Request a subvolume from the server and return the raw HTTPResponse stream it returns.
@@ -109,7 +111,7 @@ def get_subvolume_response( connection, uuid, data_name, access_type, start, sto
             "subvolume query", response.status, response.reason, response.read(),
             "GET", rest_query, "" )
     return response
-        
+
 
 def _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, format="", query_args=None, throttle=False ):
     """
@@ -153,6 +155,7 @@ def _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, forma
     if query_args:
         rest_query += "?" + "&".join( map( "=".join, query_args.items() ) )
     return rest_query
+
 
 def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=False ):
     """

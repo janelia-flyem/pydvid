@@ -309,8 +309,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         
         data = dataset[slicing]
         
-        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
-        codec = VoxelsNddataCodec( voxels_metadata )
+        codec = VoxelsNddataCodec( dataset.dtype )
         buffer_len = codec.calculate_buffer_len( data.shape )
 
         self.send_response(httplib.OK)
@@ -340,8 +339,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         if (numpy.array(full_roi_stop) > dataset.shape).any():
             dataset.resize( full_roi_stop )
         
-        voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
-        codec = VoxelsNddataCodec( voxels_metadata )
+        codec = VoxelsNddataCodec( dataset.dtype )
         data = codec.decode_to_ndarray(self.rfile, full_roi_shape)
 
         dataset[slicing] = data

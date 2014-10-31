@@ -1,38 +1,32 @@
 import numpy
 
-from voxels_metadata import VoxelsMetadata
-
 class VoxelsNddataCodec(object):
 
     # Data is sent to/retrieved from the http response stream in chunks.
-    STREAM_CHUNK_SIZE = 1000 # (bytes)
+    STREAM_CHUNK_SIZE = 8192 # (bytes)
 
     # Defined here for clients to use.
     VOLUME_MIMETYPE = "application/octet-stream"
     
-    def __init__(self, voxels_metadata):
+    def __init__(self, dtype):
         """
-        voxels_metadata: a VoxelsMetadata instance describing the remote volume.
+        dtype: The pixel type as a numpy dtype.
         """
-        assert isinstance(voxels_metadata, VoxelsMetadata)
-        self._voxels_metadata = voxels_metadata
+        self.dtype = dtype
         
     def decode_to_ndarray(self, stream, full_roi_shape):
         """
         Decode the info in the given stream to a numpy.ndarray.
         
-        Note: self._voxels_metadata.shape is IGNORED, because it refers to the entire DVID volume.
-              Instead, the full_roi_shape parameter determines the size of the decoded dataset,
-              including the channel dimension.
+        full_roi_shape: Shape of the requested data. 
+                        Roi must include the channel dimension, and all channels of data must be requested.
+                        (For example, it's not valid to request channel 2 of an RGB image.  
+                        You must request all channels 0-3.)
         """
         # Note that dvid uses fortran order indexing
-        array = numpy.ndarray( full_roi_shape,
-                               dtype=self._voxels_metadata.dtype,
-                               order='F' )
-
+        array = numpy.ndarray( full_roi_shape, dtype=self.dtype, order='F' )
         buf = numpy.getbuffer(array)
         self._read_to_buffer(buf, stream)
-
         return array
 
     def encode_from_ndarray(self, stream, array):
@@ -41,7 +35,7 @@ class VoxelsNddataCodec(object):
         
         Prerequisites:
         - array must be a numpy.ndarray
-        - array must have the same dtype as this codec's metadata
+        - array must have the same dtype as this codec
         """
         buf = self._get_buffer(array)
         self._send_from_buffer(buf, stream)
@@ -53,13 +47,13 @@ class VoxelsNddataCodec(object):
 
         Prerequisites:
         - array must be a numpy.ndarray
-        - array must have the same dtype as this codec's metadata
+        - array must have the same dtype as this codec
         """
         buf = self._get_buffer(array)
         return VoxelsNddataCodec.EncodedStream(buf)
 
     def calculate_buffer_len(self, shape):
-        return numpy.prod(shape) * self._voxels_metadata.dtype.type().nbytes
+        return numpy.prod(shape) * self.dtype.type().nbytes
     
     def _get_buffer(self, array):
         """
@@ -67,13 +61,13 @@ class VoxelsNddataCodec(object):
 
         Prerequisites:
         - array must be a numpy.ndarray
-        - array must have the same dtype as this codec's metadata
+        - array must have the same dtype as this codec
         """
         # Check for bad input.
         assert isinstance( array, numpy.ndarray ), \
             "Expected a numpy.ndarray, not {}".format( type(array) )
-        assert array.dtype == self._voxels_metadata.dtype, \
-            "Wrong dtype.  Expected {}, got {}".format( self._voxels_metadata.dtype, array.dtype )
+        assert array.dtype == self.dtype, \
+            "Wrong dtype.  Expected {}, got {}".format( self.dtype, array.dtype )
 
         # Unfortunately, if the array isn't F_CONTIGUOUS, we have to copy it.
         if not array.flags['F_CONTIGUOUS']:
