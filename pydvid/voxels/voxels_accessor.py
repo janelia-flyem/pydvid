@@ -61,7 +61,7 @@ class VoxelsAccessor(object):
         # Special case: throttle can be set explicity via the keyword or implicitly via the query_args.
         # Make sure they are consistent.
         if 'throttle' in self._query_args:
-            if self._self._query_args['throttle'] == 'on':
+            if self._query_args['throttle'] == 'on':
                 assert throttle is None or throttle is True
                 self._throttle = True
             if self._query_args['throttle'] == 'off':
