@@ -103,10 +103,28 @@ class TestVoxelsAccessor(object):
     def test_get_ndarray_throttled(self):
         """
         Get some data from the server and check it.
+        Enable throttle with throttle=True
+        
+        Note: This test doesn't really exercise our handling of 503 responses...
         """
         # Retrieve from server
         start, stop = (0,9,5,50,0), (4,10,20,150,3)
         dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name, throttle=True )
+        subvolume = dvid_vol.get_ndarray( start, stop )
+         
+        # Compare to file
+        self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
+
+    def test_get_ndarray_throttled_2(self):
+        """
+        Get some data from the server and check it.
+        Enable throttle via query_args
+
+        Note: This test doesn't really exercise our handling of 503 responses...
+        """
+        # Retrieve from server
+        start, stop = (0,9,5,50,0), (4,10,20,150,3)
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name, query_args={'throttle' : 'on'} )
         subvolume = dvid_vol.get_ndarray( start, stop )
          
         # Compare to file
