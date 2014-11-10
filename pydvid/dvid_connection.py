@@ -18,6 +18,7 @@ class DvidConnection(object):
         self.hostname = hostname
         self._connections = {}
         self.timeout = timeout
+        self._lock = threading.Lock()
     
     def __getattribute__(self, name):
         try:
@@ -30,8 +31,10 @@ class DvidConnection(object):
             try:
                 return getattr(self._connections[thread_id], name)
             except:
-                connection = httplib.HTTPConnection(self.hostname, timeout=self.timeout)
-                self._connections[thread_id] = connection
+                with self._lock:
+                    if thread_id not in self._connections:
+                        connection = httplib.HTTPConnection(self.hostname, timeout=self.timeout)
+                        self._connections[thread_id] = connection
                 return getattr(self._connections[thread_id], name)
 
     def close(self):
