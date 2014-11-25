@@ -17,6 +17,7 @@ import util
 import general
 import voxels
 import keyvalue
+import labelgraph
 import dvid_connection
 
 # Note that we DO NOT automatically import gui here, 

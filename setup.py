@@ -3,6 +3,7 @@ from setuptools import setup
 packages=['pydvid', 
           'pydvid.general',
           'pydvid.keyvalue',
+          'pydvid.labelgraph',
           'pydvid.voxels',
           'pydvid.gui' ]
 
