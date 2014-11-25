@@ -22,16 +22,17 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
     Create a new volume in the dvid server.
     """
     dvid_typename = voxels_metadata.determine_dvid_typename()
-    rest_query = "/api/dataset/{uuid}/new/{dvid_typename}/{data_name}"\
-                 "".format( **locals() )
-
+    rest_query = "/api/repo/{uuid}/instance".format(uuid=uuid)
+    
     # DVID API will change soon to allow us to send the 
     ## TODO: Validate schema
     ##message_json = voxels_metadata.to_json()
 
     # For now, we simply hard-code these settings.
     n_dims = len(voxels_metadata.shape)-1
-    message_data = { "BlockSize" : ",".join( ("32",)*n_dims ),
+    message_data = { "dataname" : data_name,
+                     "typename" : dvid_typename,
+                     "BlockSize" : ",".join( ("32",)*n_dims ),
                      "VoxelSize" : ",".join( ("1.0",)*n_dims ),
                      "VoxelUnits" : ",".join( ("nanometers",)*n_dims ) }
     properties = {}
