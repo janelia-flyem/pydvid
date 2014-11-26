@@ -46,9 +46,9 @@ def update_vertex( connection, uuid, data_name, vert, weight ):
         # Something (either dvid or the httplib) gets upset if we don't read the full response.
         response.read()
 
-def update_vertex( connection, uuid, data_name, vert1, vert2, weight ):
+def update_edge( connection, uuid, data_name, vert1, vert2, weight ):
     """
-    Create or update a vertex in the label graph
+    Create or update an edge in the label graph
     """
    
     # construct graph                                                                            
