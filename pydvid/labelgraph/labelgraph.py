@@ -74,7 +74,7 @@ def update_edges( connection, uuid, data_name, edge_list ):
     """
     Create or update edges in the label graph
     """
-    payload = 999
+    payload = 999/2 # be conservative and assume 2x edge unique vertices
     for val in range(0, len(edge_list), payload):
         _update_edges(connection, uuid, data_name, edge_list[val:val+payload])
 

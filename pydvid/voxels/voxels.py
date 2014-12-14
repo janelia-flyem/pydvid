@@ -158,7 +158,7 @@ def _format_subvolume_rest_uri( uuid, data_name, access_type, start, stop, forma
     return rest_query
 
 
-def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=False ):
+def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=True ):
     """
     Assert if the given start, stop, and volume_shape are not a valid combination. 
     If allow_overflow_extents is True, then this function won't complain if the 
