@@ -33,6 +33,15 @@ class VoxelsMetadata(dict):
         """
         return self._shape
 
+    @shape.setter
+    def shape(self, new_shape):
+        assert new_shape[0] == self.shape[0], "Can't change the number of channels."
+        
+        # Update JSON data to match
+        for axisinfo, new_axis_max, axis_min in zip(self["Axes"], new_shape[1:], self.minindex[1:]):
+            axisinfo["Size"] = new_axis_max - axis_min
+
+        self._shape = new_shape
     @property
     def minindex(self):
         """
@@ -40,6 +49,17 @@ class VoxelsMetadata(dict):
         All data below this coordinate in any dimension is guaranteed to be invalid.
         """
         return self._minindex
+
+    @minindex.setter
+    def minindex(self, new_minindex):
+        assert new_minindex[0] == self.minindex[0], "Can't change the number of channels."
+
+        # Update JSON data to match
+        for axisinfo, new_axis_min, axis_shape in zip(self["Axes"], new_minindex[1:], self.shape[1:]):
+            axisinfo["Offset"] = new_axis_min
+            axisinfo["Size"] = axis_shape - int(new_axis_min)
+
+        self._minindex = new_minindex
 
     @property
     def dtype(self):
@@ -97,7 +117,8 @@ class VoxelsMetadata(dict):
             "but must at least have a completely specified number of channels."
 
         for axisfields in metadata['Axes']:
-            if axisfields["Offset"]:
+            # If size is 0, then the offset should be ignored.
+            if axisfields["Size"] is not None:
                 minindex.append( axisfields["Offset"] )
             else:
                 minindex.append( None )

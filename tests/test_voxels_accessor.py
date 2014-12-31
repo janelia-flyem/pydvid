@@ -313,6 +313,27 @@ class TestVoxelsAccessor(object):
         # Compare to file
         self._check_subvolume(self.test_filepath, self.data_uuid, self.data_name, start, stop, subvolume)
 
+    def test_zy_post_negative_coordinates(self):
+        """
+        Just make sure nothing blows up if we post to negative coordinates.
+        (Right now, the mock server doesn't actually store this data, but it shouldn't crash.)
+        """
+        # Cutout dims
+        start, stop = (0,-10,5,-50,0), (4,10,20,150,10)
+        shape = numpy.subtract( stop, start )
+  
+        # Generate test data
+        subvolume = numpy.random.randint( 0,1000, shape ).astype( numpy.uint32 )
+
+        dvid_vol = voxels.VoxelsAccessor( self.client_connection, self.data_uuid, self.data_name )
+
+        # Send to server
+        dvid_vol.post_ndarray(start, stop, subvolume)
+        
+        # Now try to 'get' data from negative coords
+        dvid_vol.get_ndarray(start, stop)
+        
+
     def test_zz_quickstart_usage(self):
         import json
         import httplib

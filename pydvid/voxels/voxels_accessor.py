@@ -191,7 +191,7 @@ class VoxelsAccessor(object):
            ( numpy.array(start) < self.minindex ).any():
             # It looks like this post UPDATED the volume's extents.
             # Therefore, RE-request this volume's metadata from DVID so we get the new volume shape
-            self.voxels_metadata = voxels.get_metadata( self._connection, self.uuid, self.data_name )        
+            self.voxels_metadata = voxels.get_metadata( self._connection, self.uuid, self.data_name )
 
     @_auto_retry
     def _post_ndarray( self, start, stop, new_data ):
@@ -312,6 +312,8 @@ class VoxelsAccessor(object):
         ##    "".format( shape, start, stop )
 
         slicing_shape = numpy.array(stop) - start
+        assert isinstance(array_data, numpy.ndarray), \
+            "Only array data can be posted.  Broadcasting of scalars, etc. not supported."
         assert numpy.prod(array_data.shape) == numpy.prod(slicing_shape), \
             "Provided data does not match the shape of the slicing:"\
             "data has shape {}, slicing {} has shape: {}"\

@@ -173,7 +173,7 @@ def _validate_query_bounds( start, stop, volume_shape, allow_overflow_extents=Tr
     assert len(start) == len(stop) == len(shape), \
         "start/stop/shape mismatch: {}/{}/{}".format( start, stop, shape )
     assert (start < stop).all(), "Invalid start/stop: {}/{}".format( start, stop )
-    assert (start >= 0).all(), "Invalid start: {}".format( start )
+    #assert (start >= 0).all(), "Invalid start: {}".format( start )
     
     if not allow_overflow_extents and (None not in list(shape)):
         assert (start < shape).all(), "Invalid start/shape: {}/{}".format( start, shape )

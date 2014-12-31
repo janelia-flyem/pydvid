@@ -102,7 +102,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         # Parameter patterns
         param_patterns = { 'uuid'     : r"[0-9a-fA-F]+",
                            'shape'    : r"(\d+_)*\d+",
-                           'offset'   : r"(\d+_)*\d+",
+                           'offset'   : r"(\-?\d+_)*\-?\d+",
                            'dims'     : r"(\d_)*\d",
                            'dataname' : r"\w+",
                            'key'      : r"\w+",
@@ -306,13 +306,21 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         dataset = self._get_h5_dataset(uuid, dataname)
         roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
 
-        if (numpy.array(roi_start) < 0).any() or (numpy.array(roi_stop) > dataset.shape[1:]).any():
-            raise Exception("roi {} is out-of-bounds for dataset with shape {}".format( (roi_start, roi_stop), dataset.shape[1:] ) )
-
-        # Prepend channel slicing
-        slicing = (slice(None),) + tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
-
-        data = dataset[slicing]
+        if (numpy.array(roi_start) < 0).any():
+            # prepend channel
+            roi_start = (0,) + tuple(roi_start)
+            roi_stop = (dataset.shape[0],) + tuple(roi_stop)
+            
+            # This mock server doesn't really support negative coordinates,
+            #  but as a compromise, we don't choke here.  Instead, we return an array of zeros.
+            data = numpy.zeros( numpy.array(roi_stop) - roi_start, dataset.dtype )
+        else:
+            if (numpy.array(roi_stop) > dataset.shape[1:]).any():
+                raise Exception("roi {} is out-of-bounds for dataset with shape {}".format( (roi_start, roi_stop), dataset.shape[1:] ) )
+    
+            # Prepend channel slicing
+            slicing = (slice(None),) + tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
+            data = dataset[slicing]
         
         codec = VoxelsNddataCodec( dataset.dtype )
         buffer_len = codec.calculate_buffer_len( data.shape )
@@ -335,22 +343,44 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         All parameters are strings from the REST string.
         """
         dataset = self._get_h5_dataset(uuid, dataname)
+
         roi_start, roi_stop = self._determine_request_roi( dataset, dims, shape, offset )
+
         # Prepend channel to make "full" roi
         full_roi_start = (0,) + roi_start
         full_roi_stop = (dataset.shape[0],) + roi_stop
         full_roi_shape = numpy.subtract(full_roi_stop, full_roi_start)
         slicing = tuple( slice(x,y) for x,y in zip(full_roi_start, full_roi_stop) )
-        
-        # If the user is writing data beoyond the current extents of the dataset,
+
+        if 'dvid_metadata' in dataset.attrs:
+            voxels_metadata = VoxelsMetadata(dataset.attrs['dvid_metadata'])
+            del dataset.attrs['dvid_metadata']
+        else:
+            voxels_metadata = VoxelsMetadata.create_from_h5_dataset(dataset)
+
+        # If the user is writing data beyond the current extents of the dataset,
         #  resize the dataset first.
         if (numpy.array(full_roi_stop) > dataset.shape).any():
-            dataset.resize( full_roi_stop )
-        
+            dataset.resize( numpy.maximum(full_roi_stop, dataset.shape) )
+            voxels_metadata.shape = tuple( numpy.maximum( voxels_metadata.shape, full_roi_stop ) )
+
+        # Overwrite minindex is needed
+        if (numpy.array(full_roi_start) < voxels_metadata.minindex).any():
+            voxels_metadata.minindex = tuple( numpy.minimum( voxels_metadata.minindex, full_roi_start ) )
+
+        dataset.attrs['dvid_metadata'] = voxels_metadata.to_json()
+
+        # Must read the entire message body, even if it isn't used below.
         codec = VoxelsNddataCodec( dataset.dtype )
         data = codec.decode_to_ndarray(self.rfile, full_roi_shape)
-
-        dataset[slicing] = data
+    
+        if (numpy.array(roi_start) < 0).any():        
+            # We don't support negative coordinates in this mock server.
+            #  But as a compromise, we don't choke here.
+            #  Instead, we simply do nothing.
+            pass
+        else:
+            dataset[slicing] = data
         self.server.h5_file.flush()
 
         #self.send_response(httplib.NO_CONTENT) # "No Content" (accepted)
@@ -658,7 +688,10 @@ class H5MockServerDataFile(object):
         #       If we were using this mock server for more than just testing, 
         #        we would transpose to C-order before storing data and transpose 
         #        back to F-order when retrieving data.
-        volume_dset = volumes_group.create_dataset( volume_name, data=volume, chunks=True )
+        volume_dset = volumes_group.create_dataset( volume_name, 
+                                                    data=volume, 
+                                                    chunks=True, 
+                                                    maxshape=(None,)*len(volume.shape) )
         volume_dset.attrs['dvid_metadata'] = json.dumps( voxels_metadata )
         
         # Add a link to this volume in every node
