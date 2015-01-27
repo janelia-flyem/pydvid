@@ -117,8 +117,14 @@ class VoxelsNddataCodec(object):
             self._buffer = buf
             self._position = 0
         
-        def seek(self, pos):
-            self._position = pos
+        def seek(self, pos, whence):
+            # This behavior of whence follows the standard python conventions for streams
+            if whence == 0:
+                self._position = pos # Absolute position
+            if whence == 1:
+                self._position += pos # Relative to current position
+            if whence == 2:
+                self._position = len(self._buffer) - pos # Relative to stream end
         
         def tell(self):
             return self._position
