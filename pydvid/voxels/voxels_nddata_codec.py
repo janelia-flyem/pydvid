@@ -157,7 +157,9 @@ class VoxelsNddataCodec(object):
         def _read(self, nbytes=None, peeking=False):
             assert self._buffer is not None, "Can't read: stream is already closed."
             remaining_bytes = len(self._buffer) - self._position
-            if nbytes is not None:
+            if nbytes is None:
+                nbytes = remaining_bytes
+            else:
                 nbytes = min(remaining_bytes, nbytes)
 
             start = self._position
