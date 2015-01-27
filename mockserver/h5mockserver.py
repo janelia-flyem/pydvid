@@ -119,7 +119,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
                                               ("^/api/server/types",                                          { "GET"  : self._do_get_server_types }),
                                               ("^/api/repos/info$",                                           { "GET"  : self._do_get_repos_info }),
                                               ("^/api/node/{uuid}/{dataname}/metadata",                       { "GET"  : self._do_get_volume_schema }),
-                                              ("^/api/dataset/{uuid}/new/{typename}/{dataname}$",             { "POST" : self._do_create_new_data }),
+                                              ("^/api/repo/{uuid}/instance$",                                 { "POST" : self._do_create_new_instance }),
                                               
                                               # For now, we ignore format and throttle params
                                               ("^/api/node/{uuid}/{dataname}/raw/{dims}/{shape}/{offset}.*",  { "GET"  : self._do_get_data,
@@ -196,13 +196,32 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write( json_text )
 
 
-    def _do_create_new_data(self, uuid, typename, dataname):
+    def _do_create_new_instance(self, uuid):
         """
         The http client wants to create a new volume.
         Create it.
         """
         if uuid not in self.server.h5_file["all_nodes"]:
             raise self.RequestError( httplib.NOT_FOUND, "No such node with uuid {}".format( uuid ) )
+
+        # Must read exact bytes.
+        # Apparently rfile.read() just hangs.
+        body_len = self.headers.get("Content-Length")
+        json_text = self.rfile.read( int(body_len) )
+        
+        try:
+            instance_params = json.loads( json_text )
+        except ValueError:
+            raise self.RequestError( httplib.BAD_REQUEST, 
+                                     "Could not parse json in POST message body:" + json_text )
+
+        if 'typename' not in instance_params or \
+           'dataname' not in instance_params:
+            raise self.RequestError( httplib.BAD_REQUEST, 
+                                     "POST message body is missing required fields:" + json_text )
+
+        typename = instance_params['typename']
+        dataname = instance_params['dataname']        
         
         # Find the dataset that owns this node.
         volume_path = None
@@ -228,14 +247,14 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             self.server.h5_file[linkname] = h5py.SoftLink( volume_path )
             self.server.h5_file.flush()
         else:
-            self._create_volume( dataset_name, uuid, dataname, volume_path, typename )
+            self._create_volume( dataset_name, uuid, dataname, volume_path, typename, instance_params )
 
         #self.send_response(httplib.NO_CONTENT)
         self.send_response(httplib.OK)
         self.send_header("Content-length", "0" )
         self.end_headers()
 
-    def _create_volume( self, dataset_name, uuid, dataname, volume_path, typename ):
+    def _create_volume( self, dataset_name, uuid, dataname, volume_path, typename, instance_params ):
         # Must read exact bytes.
         # Apparently rfile.read() just hangs.
         body_len = self.headers.get("Content-Length")
@@ -260,10 +279,13 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         # Instead, the json contains some other parameters that we don't really care about...
         # But we need to read at least one of them to determine the dimensionality of the data.
-        
-        message_json = self.rfile.read( int(body_len) )
-        message_data = json.loads( message_json )
-        num_axes = len(message_data["Properties"]["VoxelSize"].split(','))
+
+        try:        
+            num_axes = len(instance_params["VoxelSize"].split(','))
+        except KeyError:
+            raise self.RequestError( httplib.BAD_REQUEST,
+                                     "Cannot create volume.  Config data in message body is missing 'VoxelSize' parameter: \n"
+                                     + str(instance_params) )
         
 
         # Create the new volume in the appropriate 'volumes' group,

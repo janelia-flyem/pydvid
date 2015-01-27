@@ -30,14 +30,13 @@ def create_new( connection, uuid, data_name, voxels_metadata ):
 
     # For now, we simply hard-code these settings.
     n_dims = len(voxels_metadata.shape)-1
-    message_data = { "dataname" : data_name,
-                     "typename" : dvid_typename,
-                     "BlockSize" : ",".join( ("32",)*n_dims ),
-                     "VoxelSize" : ",".join( ("1.0",)*n_dims ),
-                     "VoxelUnits" : ",".join( ("nanometers",)*n_dims ) }
-    properties = {}
-    properties["Properties"] = message_data
-    message_json = json.dumps(properties) 
+    config_data = { "dataname" : data_name,
+                    "typename" : dvid_typename,
+                    "BlockSize" : ",".join( ("32",)*n_dims ),
+                    "VoxelSize" : ",".join( ("1.0",)*n_dims ),
+                    "VoxelUnits" : ",".join( ("nanometers",)*n_dims ) }
+    
+    message_json = json.dumps(config_data) 
     
     headers = { "Content-Type" : "text/json" }
     connection.request( "POST", rest_query, body=message_json, headers=headers )
