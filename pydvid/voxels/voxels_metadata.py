@@ -56,8 +56,8 @@ class VoxelsMetadata(dict):
 
         # Update JSON data to match
         for axisinfo, new_axis_min, axis_shape in zip(self["Axes"], new_minindex[1:], self.shape[1:]):
-            axisinfo["Offset"] = new_axis_min
-            axisinfo["Size"] = axis_shape - int(new_axis_min)
+            axisinfo["Offset"] = int(new_axis_min)
+            axisinfo["Size"] = int(axis_shape) - int(new_axis_min)
 
         self._minindex = new_minindex
 
