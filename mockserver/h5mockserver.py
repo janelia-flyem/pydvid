@@ -362,7 +362,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         #  resize the dataset first.
         if (numpy.array(full_roi_stop) > dataset.shape).any():
             dataset.resize( numpy.maximum(full_roi_stop, dataset.shape) )
-            voxels_metadata.shape = tuple( numpy.maximum( voxels_metadata.shape, full_roi_stop ) )
+            voxels_metadata.shape = tuple( map(int, numpy.maximum( voxels_metadata.shape, full_roi_stop )) )
 
         # Overwrite minindex is needed
         if (numpy.array(full_roi_start) < voxels_metadata.minindex).any():
