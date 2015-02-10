@@ -1,6 +1,7 @@
 import httplib
 import contextlib
 from pydvid.errors import DvidHttpError, UnexpectedResponseError
+from pydvid.util import get_json_generic
 import json
 
 def create_new( connection, uuid, data_name ):
@@ -46,6 +47,10 @@ def put_value( connection, uuid, data_name, key, value ):
 
 def del_value( connection, uuid, data_name, key, value ):
     assert False, "TODO"
+
+def get_keys( connection, uuid, data_name ):
+    rest_query = "/api/node/{uuid}/{data_name}/keys".format( **locals() )
+    return get_json_generic( connection, rest_query, schema='dvid-keyvalue-keys-v0.01.schema.json' )
 
 def get_value_response( connection, uuid, data_name, key ):
     """
