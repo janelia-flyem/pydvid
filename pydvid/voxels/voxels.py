@@ -85,7 +85,7 @@ def post_ndarray( connection, uuid, data_name, access_type, voxels_metadata, sta
     # The httplib docs say that we can only send a stream that has a fileno() method,
     #  but it turns out we can send any stream as long as we provide our own content-length header.
     headers = { "Content-Type" : VoxelsNddataCodec.VOLUME_MIMETYPE,
-                "Content-Length" : codec.calculate_buffer_len(new_data.shape) }
+                "Content-Length" : str(codec.calculate_buffer_len(new_data.shape)) }
     
     connection.request( "POST", rest_query, body=body_data_stream, headers=headers )
     with contextlib.closing( connection.getresponse() ) as response:
