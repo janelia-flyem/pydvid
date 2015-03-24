@@ -1,3 +1,5 @@
+__version__="0.1"
+
 #
 # Monkey-patch HTTPConnection to allow logging of all requests
 #
