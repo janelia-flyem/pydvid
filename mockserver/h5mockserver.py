@@ -487,9 +487,9 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         Return the server's hdf5 dataset for the given uuid and data volume name.
         """
         dataset_path = '/all_nodes/' + uuid + '/' + dataname
-        try:
+        if dataset_path in self.server.h5_file:
             return self.server.h5_file[dataset_path]
-        except KeyError:
+        else:
             raise self.RequestError( httplib.NOT_FOUND,
                                      "Couldn't find dataset: {} in file {}"
                                      "".format( dataset_path, self.server.h5_file.filename ) )
