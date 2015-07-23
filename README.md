@@ -1,4 +1,4 @@
-pydvid: Access DVID over HTTP with Python
+DEPRECATED: pydvid: Access DVID over HTTP with Python
 =========================================
 
 Simple client for retrieving volume cutout data from a [DVID][] server as [numpy][] arrays.
